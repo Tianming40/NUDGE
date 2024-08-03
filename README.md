@@ -8,6 +8,8 @@ This is the implementation of **Neurally gUided Differentiable loGic policiEs (N
 1. Install all requirements via
     ```bash
     pip install -r requirements.txt
+    cd nsfr
+    pip install -e .
     ```
 2. On project level, simply run `python train.py` to start a new training run.
 
