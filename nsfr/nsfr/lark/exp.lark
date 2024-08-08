@@ -1,3 +1,19 @@
+metarule : metaatom ":-" metabody
+
+metaatom : meta_predicate "(" meta_args ")"
+
+metabody : metaatom "," metabody
+         | metaatom "."
+         | "."
+
+meta_args : meta_term "," meta_args
+          | meta_term
+
+meta_term : functor "(" args ")"
+          | meta_const
+          | meta_variable
+
+
 clause : atom ":-" body
 
 body : atom "," body
@@ -17,9 +33,15 @@ const : /[a-z0-9\*]+/
 
 variable : /[A-Z0-9]+/
 
+meta_variable : /[A-Z0-9\_]+/
+
+meta_const : /[a-z0-9\*]+/
+
 functor : /[a-z0-9]+/
 
 predicate : /[a-z0-9\_]+/
+
+meta_predicate : /[a-z0-9\_\*]+/
 
 var_name : /[A-Z]/
 small_chars : /[a-z0-9]+/

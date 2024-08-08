@@ -702,3 +702,350 @@ class Clause(object):
         for bi in self.body:
             size += bi.size()
         return size
+
+
+
+class MetaTerm(ABC):
+    @abstractmethod
+    def __repr__(self, level=0):
+        pass
+
+    @abstractmethod
+    def __str__(self):
+        pass
+
+    @abstractmethod
+    def __eq__(self, other):
+        pass
+
+    @abstractmethod
+    def __hash__(self):
+        pass
+
+    @abstractmethod
+    def all_vars(self):
+        pass
+
+    @abstractmethod
+    def all_consts(self):
+        pass
+
+    @abstractmethod
+    def all_funcs(self):
+        pass
+
+    @abstractmethod
+    def max_depth(self):
+        pass
+
+    @abstractmethod
+    def min_depth(self):
+        pass
+
+    @abstractmethod
+    def size(self):
+        pass
+
+    @abstractmethod
+    def is_var(self):
+        pass
+
+
+class MetaConst(MetaTerm):
+
+    def __init__(self, value, dtype=None):
+        self.value = value
+        self.dtype = dtype
+        # self.terms = self.value.terms if type(self.value) != list else []
+
+    def __repr__(self, level=0):
+        return self.__str__()
+
+    def __str__(self):
+
+        return self.value.__str__()
+
+    def __eq__(self, other):
+        return type(other) == MetaConst and self.dtype == other.dtype and self.value == other.value
+
+    def __hash__(self):
+        return hash(self.__str__())
+
+    def __lt__(self, other):
+        return self.__str__() < other.__str__()
+
+    def head(self):
+        return self
+
+    def subs(self, target_var, const):
+        return self
+
+    def to_list(self):
+        return [self]
+
+    def get_ith_term(self, i):
+        assert i == 0, 'Invalid ith term for constant ' + str(self)
+        return self
+
+    def all_vars(self):
+        return []
+
+    def all_consts(self):
+        return [self]
+
+    def all_funcs(self):
+        return []
+
+    def max_depth(self):
+        return 0
+
+    def min_depth(self):
+        return 0
+
+    def size(self):
+        return 1
+
+    def is_var(self):
+        return 0
+
+
+class MetaVar(MetaTerm):
+    def __init__(self, name):
+        self.name = name
+
+    def __repr__(self, level=0):
+        # ret = "\t"*level+repr(self.name)+"\n"
+        ret = self.name
+        return ret
+
+    def __str__(self):
+        return self.name
+
+    def __eq__(self, other):
+        return type(other) == MetaVar and self.name == other.name
+
+    def __hash__(self):
+        return hash(self.__str__())
+
+    def __lt__(self, other):
+        return self.__str__() < other.__str__()
+
+    def head(self):
+        return self
+
+    def subs(self, target_var, const):
+        if self.name == target_var.name:
+            return const
+        else:
+            return self
+
+    def to_list(self):
+        return [self]
+
+    def get_ith_term(self, i):
+        assert i == 0, 'Invalid ith term for constant ' + str(self)
+        return self
+
+    def all_vars(self):
+        return [self]
+
+    def all_consts(self):
+        return []
+
+    def all_funcs(self):
+        return []
+
+    def max_depth(self):
+        return 0
+
+    def min_depth(self):
+        return 0
+
+    def size(self):
+        return 1
+
+    def is_var(self):
+        return 1
+
+
+class MetaPredicate(Predicate):
+    # TODO
+    def __init__(self, name, arity, dtypes):
+        super(MetaPredicate, self).__init__(name, arity, dtypes)
+        self.name = name
+        self.arity = arity
+        self.dtypes = dtypes
+        self.has_proof = 'proof' in self.dtypes
+        if self.has_proof:
+            self.proof_index = [i for i in range(len(dtypes)) if dtypes[i] == 'proof']
+        else:
+            self.proof_index = None
+
+    def __str__(self):
+        return self.name + '/' + str(self.arity) + '/' + str(self.dtypes)
+
+    def __hash__(self):
+        return hash(self.__str__())
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __eq__(self, other):
+        return self.name == other.name
+
+    def __lt__(self, other):
+        return self.__str__() < other.__str__()
+
+class proof():
+    def __init__(self, atoms, tree):
+        self.atoms = atoms
+        self.tree = tree
+
+    def __str__(self):
+        s = '(' + self.atoms.__str__() + ', ' + str(self.tree) + ')'
+        return s
+
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __eq__(self,other):
+        return self.atoms == other.atoms and self.tree == other.tree
+        # return  self.tree == other.tree
+
+    def is_leaf(self):
+        return isinstance(self.tree, int)
+
+    def find_leaf_values(self):
+        if self.is_leaf():
+            return [(self.atoms,self.tree)]
+        else:
+            leaves = []
+            for subtree in self.tree:
+                leaves.extend(subtree.find_leaf_values())
+            return leaves
+
+    def reconstruct_proof(leaves):
+        """
+        Reconstructs the original proof structure from a list of (atoms, tree) tuples
+        and a tree structure indicating how nodes are connected.
+        """
+        if not leaves:
+            raise ValueError("The leaves list is empty.")
+
+        # Start by creating proof objects for each (atoms, tree) tuple
+        proofs = [proof(atoms, tree) for atoms, tree in leaves]
+
+        # Reconstruct the proof structure from the list
+        while len(proofs) > 1:
+            # Take the last two proofs and combine them
+            proof2 = proofs.pop()  # The most recent proof
+            proof1 = proofs.pop()  # The next most recent proof
+
+            # Combine the two proofs into a new proof
+            combined_atoms = MetaConst(proof1.atoms.value + proof2.atoms.value, dtype='atoms')
+            combined_tree = [proof1, proof2]
+            new_proof = proof(combined_atoms, combined_tree)
+            proofs.append(new_proof)
+
+        # The last remaining proof is the final reconstructed proof
+        return proofs[0]
+    def convert_proof_to_dict(proof):
+        return
+class MetaAtom(object):
+    def __init__(self, meta_predicate, meta_terms):
+        assert meta_predicate.arity == len(
+            meta_terms), 'Invalid arguments for predicate symbol ' + meta_predicate.name
+        self.pred = meta_predicate
+        self.terms = meta_terms
+        self.neg_state = False
+
+    def __eq__(self, other):
+        # if other == None:
+        #     return False
+        # if self.pred == other.pred:
+        #     if not self.is_solve:
+        #         # clause
+        #         for i in range(len(self.terms)):
+        #             if not self.terms[i] == other.terms[i]:
+        #                 return False
+        #         return True
+        #     # elif not type(self.terms[0].value) == type(other.terms[0].value):
+        #     #     return False
+        #     elif not self.terms[0] == other.terms[0]:
+        #         return False
+        #     else:
+        #         return True
+        # else:
+        #     return False
+
+        if other == None:
+            return False
+
+        if self.pred == other.pred:
+            for i in range(len(self.terms)):
+                if not self.terms[i] == other.terms[i]:
+                    return False
+            return True
+
+        else:
+            return False
+
+    def __str__(self):
+        s = self.pred.name + '('
+        for arg in self.terms:
+            s += arg.__str__() + ','
+        s = s[0:-1]
+        s += ')'
+        return s
+
+
+    def __repr__(self):
+        return self.__str__()
+
+
+    def __hash__(self):
+        return hash(self.__str__())
+
+
+
+    def __lt__(self, other):
+        """comparison < """
+        return self.__str__() < other.__str__()
+
+    def __gt__(self, other):
+        """comparison > """
+        return self.__str__() < other.__str__()
+
+    def all_vars(self):
+        var_list = []
+        for term in self.terms:
+            # var_list.append(term.all_vars())
+            var_list += term.all_vars()
+        return var_list
+
+    def all_consts(self):
+        const_list = []
+        for term in self.terms:
+            const_list += term.all_consts()
+        return const_list
+
+class MetaRule():
+    def __init__(self, head, body):
+        self.head = head
+        self.body = body
+
+    def __str__(self):
+
+        head_str = self.head.__str__()
+        body_str = ""
+        for bi in self.body:
+            body_str += bi.__str__()
+            body_str = body_str+','
+        body_str = body_str[0:-1]
+        body_str += '.'
+        return head_str + ':-' + body_str
+
+    def __repr__(self):
+        return self.__str__()
+

@@ -67,3 +67,46 @@ class ExpTree(Transformer):
 
     def small_chars(self, content):
         return content[0]
+
+    def atoms(self,trees):
+        if len(trees) == 0:
+            return []
+        elif len(trees) == 1:
+            return trees[0]
+        else:
+            return [trees[0]] + trees[1:]
+
+    def metarule(self,trees):
+        return MetaRule(trees[0],flatten([trees[1]]))
+
+
+    def metaatom(self, trees):
+        meta_pred = trees[0]
+        meta_args = flatten([trees[1]])
+        return MetaAtom(meta_pred, meta_args)
+
+
+    def metabody(self, trees):
+        if len(trees) == 0:
+            return []
+        elif len(trees) == 1:
+            return trees[0]
+        else:
+            return [trees[0]] + trees[1:]
+
+
+    def meta_predicate(self, alphas):
+        meta_pred = [p for p in self.lang.metapreds if p.name == alphas[0]][0]
+        return meta_pred
+
+    def meta_args(self,content):
+        if len(content) == 1:
+            return content[0]
+        else:
+            return [content[0]] + content[1:]
+
+    def meta_term(self, content):
+        return content[0]
+
+    def meta_variable(self, name):
+        return MetaVar(name[0])

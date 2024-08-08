@@ -1,0 +1,4 @@
+solve**:1:atoms*
+solve*:1:atoms
+solve:1:atom
+clause:2:atom,atoms

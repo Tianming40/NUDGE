@@ -23,6 +23,7 @@ def get_lang(lark_path, lang_base_path, dataset):
     return lang, clauses, bk, atoms
 
 
+
 def build_infer_module(clauses, atoms, lang, device, m=3, infer_step=3, train=False):
     te = TensorEncoder(lang, atoms, clauses, device=device)
     I = te.encode()
@@ -30,7 +31,7 @@ def build_infer_module(clauses, atoms, lang, device, m=3, infer_step=3, train=Fa
     return im
 
 
-def generate_atoms(lang):
+def generate_atoms(lang, meta=False):
     spec_atoms = [false, true]
     atoms = []
     for pred in lang.preds:
@@ -49,7 +50,10 @@ def generate_atoms(lang):
                 # args_str_list.append(
                 #    str(sorted([str(arg) for arg in args])))
                 # print('add atom: ', Atom(pred, args))
-    return spec_atoms + sorted(atoms)
+    if meta:
+        return sorted(atoms)
+    else:
+        return spec_atoms + sorted(atoms)
 
 
 def build_clause_infer_module(clauses, bk_clauses, atoms, lang, device, m=3, infer_step=3, train=False):
@@ -117,3 +121,81 @@ def get_searched_clauses(lark_path, lang_base_path, dataset_type, dataset):
     lang = du.load_language()
     clauses = du.load_clauses(du.base_path + dataset + '/beam_searched.txt', lang)
     return clauses
+
+
+
+def get_metalang(lark_path, lang_base_path, dataset, n, exhaustion = False, filter=True):
+
+    du = DataUtils(lark_path=lark_path, lang_base_path=lang_base_path, dataset=dataset)
+    lang, clauses, bk, atoms = get_lang(lark_path, lang_base_path,  dataset)
+    # FIXME n must be choosen
+    head = []
+    body = []
+    head_predicate_names = set(clause.head.pred.name for clause in clauses)
+    body_predicate_names = set(body.pred.name for clause in clauses for body in clause.body)
+    for atom in atoms:
+        if atom.pred.name in body_predicate_names:
+            body.append(atom)
+        if atom.pred.name in head_predicate_names:
+            head.append(atom)
+
+    metaconsts = generate_metaconsts(generate_atoms(lang, True), n, head, body)
+
+    metalang = du.load_metalanguage(metaconsts)
+    meta_bk_true = du.load_meta_clauses(du.base_path + 'clauses.txt', metalang)
+    meta_bk = du.load_meta_atoms(du.base_path + 'bk.txt', metalang)
+    meta_bk += meta_bk_true
+    meta_interpreter = du.load_interpreter(du.base_path + 'naive_meta_interpreter.txt', metalang)
+    meta_atoms = generate_metaatoms(metalang, bk, exhaustion )
+    if filter:
+        meta_atoms = [atom for atom in meta_atoms if not (atom.pred.name == 'clause' and atom not in meta_bk)]
+        return metalang, meta_bk, meta_interpreter, meta_atoms
+    else:
+        return metalang, meta_bk, meta_interpreter, meta_atoms
+
+
+
+
+
+def generate_metaconsts(atoms, n, head, body):
+    # FIxme modify
+    metaconsts = []
+    head_atoms = []
+    ite_body_atoms = []
+    for atom in atoms:
+        if atom in body:
+            ite_body_atoms.append(atom)
+        if atom in head:
+            meta_atom = MetaConst(atom,  dtype='atom')
+            head_atoms.append(meta_atom)
+
+    for i in range(1, n+1):
+        for combo in itertools.product(ite_body_atoms, repeat=i):  # Cartesian Product with len=1
+            if len(set(combo)) == len(combo):
+                combo = list(combo)
+                metaconst_atoms = MetaConst(combo, dtype='atoms')
+                metaconsts.append(metaconst_atoms)
+    metaconsts += head_atoms
+    return metaconsts
+
+
+def generate_metaatoms(lang, bk, exhaustion = False):
+    metaatoms = []
+    for pred in lang.metapreds:
+        dtypes = pred.dtypes
+        consts_list = [lang.get_meta_by_dtype(dtype) for dtype in dtypes]
+        # print(pred,'++++++++++++++++++++************************************************************\n',consts_list)
+        args_list = list(set(itertools.product(*consts_list)))
+        # print(pred,'++++++++++++++++++++************************************************************\n',args_list)
+        for args in args_list:
+            if len(args) == 1 or len(set(args)) == len(args):
+                args = list(args)
+                metaatoms.append(MetaAtom(pred, args))
+
+    metasolveture = MetaAtom(lang.get_meta_pred_by_name('solve'), [MetaConst(true, dtype='atom')])
+    metasolvefalse = MetaAtom(lang.get_meta_pred_by_name('solve'), [MetaConst(false, dtype='atom')])
+    spec_meta_atom = [metasolvefalse, metasolveture]
+    return spec_meta_atom + sorted(metaatoms)
+
+
+

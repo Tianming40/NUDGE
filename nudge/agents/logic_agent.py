@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 from torch.distributions import Categorical
 
-from nsfr.common import get_nsfr_model
+from nsfr.common import get_nsfr_model, get_
 from nsfr.utils.common import load_module
 from nudge.env import NudgeBaseEnv
 
@@ -19,6 +19,7 @@ class NsfrActorCritic(nn.Module):
         self.rng = random.Random() if rng is None else rng
         self.env = env
         self.actor = get_nsfr_model(env.name, rules, device=device, train=True)
+        self.actor = get_meta_nsfr_model(env.name, rules, device=device, train=True)
         self.prednames = self.get_prednames()
 
         mlp_module_path = f"in/envs/{self.env.name}/mlp.py"
