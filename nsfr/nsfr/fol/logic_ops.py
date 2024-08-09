@@ -1,4 +1,4 @@
-from .logic import Clause, Atom, FuncTerm, Const, Var
+from .logic import Clause, Atom, FuncTerm, Const, Var,MetaVar, Term, MetaConst,MetaAtom,MetaRule
 
 
 def subs(exp, target_var, const):
@@ -42,6 +42,38 @@ def subs(exp, target_var, const):
     else:
         assert 1 == 0, 'Unknown type in substitution: ' + str(exp)
 
+def meta_subs(exp, target_var, const):
+    if type(exp) == Clause:
+        head = subs(exp.head, target_var, const)
+        body = [subs(bi, target_var, const) for bi in exp.body]
+        return Clause(head, body)
+    elif type(exp) == Atom:
+        terms = [subs(term, target_var, const) for term in exp.terms]
+        return Atom(exp.pred, terms)
+    elif type(exp) == FuncTerm:
+        args = [subs(arg, target_var, const) for arg in exp.args]
+        return FuncTerm(exp.func_symbol, args)
+    elif type(exp) == Var:
+        if exp.name == target_var.name:
+            return const
+        else:
+            return exp
+    elif type(exp) == Const:
+        return exp
+    elif type(exp) == MetaVar:
+        if exp.name == target_var.name:
+            return const
+        else:
+            return exp
+    elif type(exp) == MetaConst:
+        return exp
+    elif type(exp) == MetaAtom:
+        terms = [meta_subs(term, target_var, const) for term in exp.terms]
+        return MetaAtom(exp.pred, terms)
+    else:
+        assert 1 == 0, 'Unknown type in substitution: ' + str(exp)
+
+
 
 def subs_list(clause, theta_list):
     """
@@ -58,6 +90,45 @@ def subs_list(clause, theta_list):
     for theta in theta_list:
         result = subs(result, theta[0], theta[1])
     return result
+
+def meta_subs_list(exp, theta_list):
+    if type(exp) == MetaRule:
+        head = exp.head
+        body = exp.body
+        for target_var, const in theta_list:
+            if '_' in target_var.name and len(const.value) >1:
+                assert target_var.name.count('_') == 1, (f"InvalidUnderscoreCountError: The string '{target_var.name}' must contain exactly one underscore, "
+                                                         f"but it contains {target_var.name.count('_')}.")
+                head = meta_subs(head, target_var, const)
+                body_var1_name,body_var2_name  = target_var.name.split('_')
+                body_var1 = MetaVar(body_var1_name)
+                body_var2 = MetaVar(body_var2_name)
+                const1 = MetaConst(const.value[:1],dtype='atoms')
+                const2 = MetaConst(const.value[1:],dtype='atoms')
+                body = [meta_subs(bi, body_var1, const1) for bi in body]
+                body = [meta_subs(bi, body_var2, const2) for bi in body]
+            else:
+                head = meta_subs(head, target_var, const)
+                body = [meta_subs(bi, target_var, const) for bi in body]
+        return MetaRule(head, body)
+    elif type(exp) == MetaAtom:
+        terms = exp.terms
+        for target_var, const in theta_list:
+            terms = [meta_subs(term, target_var, const) for term in terms]
+        return MetaAtom(exp.pred, terms)
+    #elif type(exp) == FuncTerm:
+    #    for target_var, const in theta_list:
+    #        args = [subs(arg, target_var, const) for arg in exp.args]
+    #    return FuncTerm(exp.func_symbol, args)
+    #elif type(exp) == Var:
+    #    if exp.name == target_var.name:
+    #        return const
+    #    else:
+    #        return exp
+    #elif type(exp) == Const:
+    #    return exp
+    else:
+        assert 1 == 0, 'Unknown type in substitution: ' + str(exp)
 
 
 def unify(atoms):
@@ -118,6 +189,66 @@ def unify(atoms):
                     subs_flag = True
                     # UNIFICATION SUCCESS
                     atoms_ = [subs(atom, subs_var, subs_term)
+                              for atom in atoms_]
+                    if is_singleton(atoms_):
+                        return (1, theta_list)
+                else:
+                    # UNIFICATION FAILED
+                    return (0, [])
+
+
+def meta_unify(meta_atoms):
+    # empty set
+    if len(meta_atoms) == 0:
+        return (1, [])
+    # check predicates
+    for i in range(len(meta_atoms) - 1):
+        if meta_atoms[i].pred != meta_atoms[i + 1].pred:
+            return (0, [])
+
+    # check all the same
+    all_same_flag = True
+    for i in range(len(meta_atoms) - 1):
+        all_same_flag = all_same_flag and (meta_atoms[i] == meta_atoms[i + 1])
+    if all_same_flag:
+        return (1, [])
+
+    k = 0
+    theta_list = []
+
+    atoms_ = meta_atoms
+    while (True):
+        # check terms from left
+        for i in range(atoms_[0].pred.arity):
+            # atom_1(term_1, ..., term_i, ...), ..., atom_j(term_1, ..., term_i, ...), ...
+            terms_i = [atoms_[j].terms[i] for j in range(len(atoms_))]
+            disagree_flag, disagree_set = get_disagreements(terms_i)
+            if not disagree_flag:
+                continue
+            var_list = [x for x in disagree_set if type(x) == MetaVar]
+            const_list = [y for y in disagree_set if type(y) == MetaConst]
+            var_name = var_list[0].name
+            if type(const_list[0].value) == list:
+                const_value_length = len(const_list[0].value)
+            else:
+                const_value_length = 0
+
+            if len(var_list) == 0:
+                return (0, [])
+            elif '_' in var_name and const_value_length == 1: return (0, [])
+            elif '_' not in var_name and const_value_length > 1: return (0, [])
+            else:
+                # substitute
+                subs_var = var_list[0]
+                # find term where the var does not occur
+                subs_flag, subs_term = find_subs_term(
+                    subs_var, disagree_set)
+                if subs_flag:
+                    k += 1
+                    theta_list.append((subs_var, subs_term))
+                    subs_flag = True
+                    # UNIFICATION SUCCESS
+                    atoms_ = [meta_subs(atom, subs_var, subs_term)
                               for atom in atoms_]
                     if is_singleton(atoms_):
                         return (1, theta_list)

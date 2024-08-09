@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
-from fol.logic import NeuralPredicate,Clause,Atom
+from .fol.logic import NeuralPredicate,Clause,Atom
 from tqdm import tqdm
-from fol.logic import *
-from fol.language import DataType, MetaLanguage
-from fol.logic_ops import unify,subs_list
+from .fol.logic import *
+from .fol.language import DataType, MetaLanguage
+from .fol.logic_ops import unify,subs_list
 
 p_ = Predicate('.', 1, [DataType('spec')])
 false = Atom(p_, [Const('__F__', dtype=DataType('spec'))])

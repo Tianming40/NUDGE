@@ -1,5 +1,5 @@
 from nsfr.infer import InferModule, ClauseInferModule, ClauseBodyInferModule
-from nsfr.tensor_encoder import TensorEncoder
+from nsfr.tensor_encoder import TensorEncoder, MetaTensorEncoder
 from nsfr.fol.logic import *
 from nsfr.fol.data_utils import DataUtils
 from nsfr.fol.language import DataType
@@ -26,6 +26,13 @@ def get_lang(lark_path, lang_base_path, dataset):
 
 def build_infer_module(clauses, atoms, lang, device, m=3, infer_step=3, train=False):
     te = TensorEncoder(lang, atoms, clauses, device=device)
+    I = te.encode()
+    im = InferModule(I, m=m, infer_step=infer_step, device=device, train=train)
+    return im
+
+
+def build_meta_infer_module(clauses, atoms, lang, m, infer_step, device, train=False ):
+    te = MetaTensorEncoder(lang, atoms, clauses,  device=device)
     I = te.encode()
     im = InferModule(I, m=m, infer_step=infer_step, device=device, train=train)
     return im
@@ -103,6 +110,14 @@ def get_index_by_predname(pred_str, atoms):
     for i, atom in enumerate(atoms):
         if atom.pred.name == pred_str:
             return i
+    assert 1, pred_str + ' not found.'
+
+def get_index_by_predname_meta(pred_str, metaatoms):
+    for i, metaatom in enumerate(metaatoms):
+        if metaatom.pred.name == 'solve' :
+            if metaatom.terms[0].value.pred.name == pred_str:
+                # print('+++++', metaatom)
+                return i
     assert 1, pred_str + ' not found.'
 
 
