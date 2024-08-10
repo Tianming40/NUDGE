@@ -154,6 +154,8 @@ def get_metalang(lark_path, lang_base_path, dataset, n, exhaustion = False, filt
         if atom.pred.name in head_predicate_names:
             head.append(atom)
 
+    filtered_atoms = [atom for atom in atoms if atom not in head and atom not in body]
+
     metaconsts = generate_metaconsts(generate_atoms(lang, True), n, head, body)
 
     metalang = du.load_metalanguage(metaconsts)

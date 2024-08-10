@@ -16,7 +16,7 @@ class MetaNSFReasoner(nn.Module):
         atoms (list(atom)): The set of ground atoms (facts).
     """
 
-    def __init__(self, facts_converter, infer_module, atoms, bk, meta_interpreter,clauses, train=False):
+    def __init__(self, facts_converter, infer_module, atoms, bk, meta_interpreter, clauses, train=False):
         super().__init__()
         self.fc = facts_converter
         self.im = infer_module

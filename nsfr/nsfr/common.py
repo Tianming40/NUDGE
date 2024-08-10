@@ -38,11 +38,11 @@ def get_meta_nsfr_model(env_name: str, rules: str, device: str, train=False):
     lang_base_path = f"in/envs/{env_name}/logic/"
 
     lang, clauses, bk, atoms = get_lang(lark_path, lang_base_path, rules)
-    n=0
+    n = 0
     for clause in clauses:
         if len(clause.body) > n:
             n = len(clause.body)
-    metalang, meta_bk, meta_interpreter, meta_atoms = get_metalang(lark_path, lang_base_path, rules, n)
+    metalang, meta_bk, meta_interpreter, meta_atoms = get_metalang(lark_path, lang_base_path, rules, n, exhaustion = False, filter=True)
 
     val_fn_path = f"in/envs/{env_name}/valuation.py"
     val_module = ValuationModule(val_fn_path, metalang, device)
@@ -58,5 +58,5 @@ def get_meta_nsfr_model(env_name: str, rules: str, device: str, train=False):
                                  train=train, device=device)
     # Neuro-Symbolic Forward Reasoner
 
-    MetaNSFR = MetaNSFReasoner(facts_converter=FC, infer_module=IM, atoms=meta_atoms, bk=meta_bk, meta_interpreter=meta_interpreter, clauese=clauses,train=train)
+    MetaNSFR = MetaNSFReasoner(facts_converter=FC, infer_module=IM, atoms=meta_atoms, bk=meta_bk, meta_interpreter=meta_interpreter, clauses = clauses,train=train)
     return MetaNSFR
