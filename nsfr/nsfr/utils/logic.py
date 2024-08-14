@@ -156,7 +156,9 @@ def get_metalang(lark_path, lang_base_path, dataset, n, exhaustion = False, filt
 
     filtered_atoms = [atom for atom in atoms if atom not in head and atom not in body]
 
-    metaconsts = generate_metaconsts(generate_atoms(lang, True), n, head, body)
+    pattern = get_pattern(clauses)
+
+    metaconsts = generate_metaconsts(generate_atoms(lang, True), n, head, body, pattern)
 
     metalang = du.load_metalanguage(metaconsts)
     meta_bk_true = du.load_meta_clauses(du.base_path + 'clauses.txt', metalang)
@@ -171,10 +173,26 @@ def get_metalang(lark_path, lang_base_path, dataset, n, exhaustion = False, filt
         return metalang, meta_bk, meta_interpreter, meta_atoms
 
 
+def get_pattern(clauses):
+    all_patterns = []
+
+    for clause in clauses:
+        body_preds = [body.pred for body in clause.body]
+
+        while len(body_preds) > 0:
+            all_patterns.append(body_preds.copy())
+
+            if len(body_preds) > 1:
+                popped_pred = body_preds.pop(0)
+                all_patterns.append([popped_pred])
+            else:
+                popped_pred = body_preds.pop(0)
+
+    return all_patterns
 
 
 
-def generate_metaconsts(atoms, n, head, body):
+def generate_metaconsts(atoms, n, head, body,pattern):
     # FIxme modify
     metaconsts = []
     head_atoms = []
@@ -190,10 +208,20 @@ def generate_metaconsts(atoms, n, head, body):
         for combo in itertools.product(ite_body_atoms, repeat=i):  # Cartesian Product with len=1
             if len(set(combo)) == len(combo):
                 combo = list(combo)
-                metaconst_atoms = MetaConst(combo, dtype='atoms')
-                metaconsts.append(metaconst_atoms)
+                if ispattern(combo, pattern):
+                    metaconst_atoms = MetaConst(combo, dtype='atoms')
+                    metaconsts.append(metaconst_atoms)
     metaconsts += head_atoms
     return metaconsts
+
+def ispattern(atoms, pattern):
+    atomspattern = []
+    for atom in atoms:
+        atomspattern.append(atom.pred)
+    if atomspattern in pattern:
+        return True
+    else: return False
+
 
 
 def generate_metaatoms(lang, bk, exhaustion = False):
