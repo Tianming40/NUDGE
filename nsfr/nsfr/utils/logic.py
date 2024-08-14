@@ -1,6 +1,7 @@
 from nsfr.infer import InferModule, ClauseInferModule, ClauseBodyInferModule
 from nsfr.tensor_encoder import TensorEncoder, MetaTensorEncoder
 from nsfr.fol.logic import *
+from nsfr.fol.logic_ops import *
 from nsfr.fol.data_utils import DataUtils
 from nsfr.fol.language import DataType
 
@@ -156,9 +157,9 @@ def get_metalang(lark_path, lang_base_path, dataset, n, exhaustion = False, filt
 
     filtered_atoms = [atom for atom in atoms if atom not in head and atom not in body]
 
-    pattern = get_pattern(clauses)
+    patterns = get_patterns(clauses)
 
-    metaconsts = generate_metaconsts(generate_atoms(lang, True), n, head, body, pattern)
+    metaconsts = generate_metaconsts(generate_atoms(lang, True), n, head, lang, patterns)
 
     metalang = du.load_metalanguage(metaconsts)
     meta_bk_true = du.load_meta_clauses(du.base_path + 'clauses.txt', metalang)
@@ -173,46 +174,107 @@ def get_metalang(lark_path, lang_base_path, dataset, n, exhaustion = False, filt
         return metalang, meta_bk, meta_interpreter, meta_atoms
 
 
-def get_pattern(clauses):
+def get_patterns(clauses):
     all_patterns = []
 
     for clause in clauses:
-        body_preds = [body.pred for body in clause.body]
+        bodys = clause.body.copy()
 
-        while len(body_preds) > 0:
-            all_patterns.append(body_preds.copy())
+        while len(bodys) > 0:
+            all_patterns.append(bodys.copy())
 
-            if len(body_preds) > 1:
-                popped_pred = body_preds.pop(0)
-                all_patterns.append([popped_pred])
+            if len(bodys) > 1:
+                popped_atom = bodys.pop(0)
+                all_patterns.append([popped_atom])
             else:
-                popped_pred = body_preds.pop(0)
+                popped_atom = bodys.pop(0)
 
     return all_patterns
 
 
 
-def generate_metaconsts(atoms, n, head, body,pattern):
+def generate_metaconsts(atoms, n, head, lang,patterns):
     # FIxme modify
     metaconsts = []
     head_atoms = []
     ite_body_atoms = []
     for atom in atoms:
-        if atom in body:
-            ite_body_atoms.append(atom)
         if atom in head:
             meta_atom = MetaConst(atom,  dtype='atom')
             head_atoms.append(meta_atom)
 
-    for i in range(1, n+1):
-        for combo in itertools.product(ite_body_atoms, repeat=i):  # Cartesian Product with len=1
-            if len(set(combo)) == len(combo):
-                combo = list(combo)
-                if ispattern(combo, pattern):
-                    metaconst_atoms = MetaConst(combo, dtype='atoms')
-                    metaconsts.append(metaconst_atoms)
+    # for i in range(1, n+1):
+    #     for combo in itertools.product(ite_body_atoms, repeat=i):  # Cartesian Product with len=1
+    #         if len(set(combo)) == len(combo):
+    #             combo = list(combo)
+    #             if ispattern(combo, pattern):
+    #                 metaconst_atoms = MetaConst(combo, dtype='atoms')
+    #                 metaconsts.append(metaconst_atoms)
+    for pattern in patterns:
+        theta_list = generate_subs(lang, pattern)
+        for the in theta_list:
+            for th in the:
+                body = [subs(bi, th[0], th[1]) for bi in pattern]
+                body_cons = MetaConst(body, dtype='atoms')
+                metaconsts.append(body_cons)
+
     metaconsts += head_atoms
     return metaconsts
+
+
+def generate_subs(lang, body):
+    """Generate substitutions from given body atoms.
+
+    Generate the possible substitutions from given list of atoms. If the body contains any variables,
+    then generate the substitutions by enumerating constants that matches the data type.
+    !!! ASSUMPTION: The body has variables that have the same data type
+        e.g. variables O1(object) and Y(color) cannot appear in one clause !!!
+
+    Args:
+        body (list(atom)): The body atoms which may contain existentially quantified variables.
+
+    Returns:
+        theta_list (list(substitution)): The list of substitutions of the given body atoms.
+    """
+    # extract all variables and corresponding data types from given body atoms
+    var_dtype_list = []
+    dtypes = []
+    vars = []
+    for atom in body:
+        terms = atom.terms
+        for i, term in enumerate(terms):
+            if term.is_var():
+                v = term
+                dtype = atom.pred.dtypes[i]
+                var_dtype_list.append((v, dtype))
+                dtypes.append(dtype)
+                vars.append(v)
+    # in case there is no variables in the body
+    if len(list(set(dtypes))) == 0:
+        return []
+    # check the data type consistency
+    assert len(list(set(dtypes))) == 1, "Invalid existentially quantified variables. " + \
+                                        str(len(list(set(dtypes)))) + " data types in the body: " + str(
+        body) + " dypes: " + str(dtypes)
+
+    vars = list(set(vars))
+    n_vars = len(vars)
+    consts = lang.get_by_dtype(dtypes[0])
+
+    # e.g. if the data type is shape, then subs_consts_list = [(red,), (yellow,), (blue,)]
+    subs_consts_list = itertools.permutations(consts, n_vars)
+
+    theta_list = []
+    # generate substitutions by combining variables to the head of subs_consts_list
+    for subs_consts in subs_consts_list:
+        theta = []
+        for i, const in enumerate(subs_consts):
+            s = (vars[i], const)
+            theta.append(s)
+        theta_list.append(theta)
+    # e.g. theta_list: [[(Z, red)], [(Z, yellow)], [(Z, blue)]]
+    # print("theta_list: ", theta_list)
+    return theta_list
 
 def ispattern(atoms, pattern):
     atomspattern = []
