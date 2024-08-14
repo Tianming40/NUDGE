@@ -134,7 +134,7 @@ class DataUtils(object):
         lang = Language(preds, [], consts)
         return lang
 
-    def load_meta_clauses(self, path, lang):
+    def load_meta_clauses(self, path, lang, facts):
         meta_clauses = []
         clauses = []
         meta_bk_clause_true = []
@@ -147,42 +147,51 @@ class DataUtils(object):
                     # print(tree)
                     clause = ExpTree(lang).transform(tree)
                     clauses.append(clause)
-
+        head_unifier_dic = self.build_head_unifier_dic(clauses, facts)
         for clause in clauses:
-            dtypes = clause.head.pred.dtypes
-            consts_list = [lang.get_by_dtype(dtype) for dtype in dtypes]
-            args_list = list(set(itertools.product(*consts_list)))
-            head_atoms = []
-            for args in args_list:
-                if len(args) == 1 or len(set(args)) == len(args):
-                    unify_flag, theta = unify([clause.head, Atom(clause.head.pred, args)])
-                    if unify_flag:
-                        clause_ = subs_list(clause, theta)
-                        body = clause_.body
-                        theta_list = self.generate_subs(lang, body)
-                        for the in theta_list:
-                            _clause_ = subs_list(clause_, the)
-                            clause_pred = lang.get_meta_pred_by_name('clause')
-                            head_cons = MetaConst(_clause_.head, dtype='atom')
-                            body_cons = MetaConst(_clause_.body, dtype='atoms')
-                            meta_clause = MetaAtom(clause_pred, [head_cons, body_cons])
-                            meta_bk_clause_true.append(meta_clause)
+            for fi, fact in enumerate(facts):
+                if (clause.head, fact) in head_unifier_dic:
+                    theta = head_unifier_dic[(clause.head, fact)]
+                    clause_ = subs_list(clause, theta)
+                    body = clause_.body
+                    theta_list = self.generate_subs(lang,body)
+                    for the in theta_list:
+                        _clause_ = subs_list(clause_, the)
+                        clause_pred = lang.get_meta_pred_by_name('clause')
+                        head_cons = MetaConst(_clause_.head, dtype=DataType('atom'))
+                        body_cons = MetaConst(_clause_.body, dtype=DataType('atoms'))
+                        meta_clause = MetaAtom(clause_pred, [head_cons, body_cons])
+                        meta_bk_clause_true.append(meta_clause)
+
         return meta_bk_clause_true
+
+    def build_head_unifier_dic(self, clauses, facts):
+        """Build dictionary {(head, fact) -> unifier}.
+
+        Returns:
+            dic ({(atom,atom) -> subtitution}): A dictionary to map the pair of ground atoms to their unifier.
+        """
+        dic = {}
+        heads = set([c.head for c in clauses])
+        for head in heads:
+            for fi, fact in enumerate(facts):
+                unify_flag, theta_list = unify([head, fact])
+                if unify_flag:
+                    dic[(head, fact)] = theta_list
+        return dic
 
     def generate_subs(self, lang, body):
         """Generate substitutions from given body atoms.
 
         Generate the possible substitutions from given list of atoms. If the body contains any variables,
         then generate the substitutions by enumerating constants that matches the data type.
-        !!! ASSUMPTION: The body has variables that have the same data type
-            e.g. variables O1(object) and Y(color) cannot appear in one clause !!!
-
         Args:
             body (list(atom)): The body atoms which may contain existentially quantified variables.
 
         Returns:
             theta_list (list(substitution)): The list of substitutions of the given body atoms.
         """
+        # example: body = [on_left(O2,O1)]
         # extract all variables and corresponding data types from given body atoms
         var_dtype_list = []
         dtypes = []
@@ -199,28 +208,33 @@ class DataUtils(object):
         # in case there is no variables in the body
         if len(list(set(dtypes))) == 0:
             return []
-        # check the data type consistency
-        assert len(list(set(dtypes))) == 1, "Invalid existentially quantified variables. " + \
-                                            str(len(list(set(dtypes)))) + " data types in the body: " + str(
-            body) + " dypes: " + str(dtypes)
 
-        vars = list(set(vars))
-        n_vars = len(vars)
-        consts = lang.get_by_dtype(dtypes[0])
+        # {O2: [obj2, obj3, obj4, obj5, obj6, obj7, obj8, obj9, obj10, obj11], O1: [obj1]}
+        var_to_consts_dic = {}
+        for v, dtype in var_dtype_list:
+            if not v in var_to_consts_dic:
+                var_to_consts_dic[v] = lang.get_by_dtype(dtype)
 
-        # e.g. if the data type is shape, then subs_consts_list = [(red,), (yellow,), (blue,)]
-        subs_consts_list = itertools.permutations(consts, n_vars)
+        # [[obj2, obj3, obj4, obj5, obj6, obj7, obj8, obj9, obj10, obj11], [obj1]]
+        subs_consts_list = list(var_to_consts_dic.values())
+        # for v in vars:
+        #     subs_consts_list.append(var_to_consts_dic[v])
 
+        # [(obj2, obj1), (obj3, obj1), (obj4, obj1), (obj5, obj1), (obj6, obj1), (obj7, obj1), (obj8, obj1), (obj9, obj1), (obj10, obj1), (obj11, obj1)]
+        subs_consts_list_by_product = list(itertools.product(*subs_consts_list))
+
+        # [O2, O1]
+        subs_vars = list(var_to_consts_dic.keys())
+
+        # [[(O2, obj2), (O1, obj1)], [(O2, obj3), (O1, obj1)], ...]
         theta_list = []
-        # generate substitutions by combining variables to the head of subs_consts_list
-        for subs_consts in subs_consts_list:
+        for subs_consts in subs_consts_list_by_product:
             theta = []
+
             for i, const in enumerate(subs_consts):
-                s = (vars[i], const)
+                s = (subs_vars[i], const)
                 theta.append(s)
             theta_list.append(theta)
-        # e.g. theta_list: [[(Z, red)], [(Z, yellow)], [(Z, blue)]]
-        # print("theta_list: ", theta_list)
         return theta_list
 
     def load_meta_atoms(self, path, lang):
@@ -236,7 +250,7 @@ class DataUtils(object):
                     tree = self.lp_atom.parse(line)
                     atom = ExpTree(lang).transform(tree)
                     solve_pred=lang.get_meta_pred_by_name('solve*')
-                    metaconst = MetaConst([atom],dtype='atoms')
+                    metaconst = MetaConst([atom],dtype=DataType('atoms'))
                     metasolve = MetaAtom(solve_pred, [metaconst])
                     metaatoms.append(metasolve)
         return metaatoms
@@ -274,7 +288,7 @@ class DataUtils(object):
     def load_metalanguage(self,metaconsts):
         preds = self.load_preds(self.base_path + 'preds.txt') + \
                 self.load_neural_preds(self.base_path + 'neural_preds.txt')
-        consts = self.load_consts(self.base_path + 'const.txt')
+        consts = self.load_consts(self.base_path + 'consts.txt')
         metapreds = self.load_meta_preds(self.base_path + 'meta_preds.txt')
         metalang = MetaLanguage(preds, metapreds, [], consts, metaconsts)
         return metalang

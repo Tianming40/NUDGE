@@ -875,7 +875,7 @@ class MetaPredicate(Predicate):
         self.name = name
         self.arity = arity
         self.dtypes = dtypes
-        self.has_proof = 'proof' in self.dtypes
+        self.has_proof = 'proof' in [dtype.__str__() for dtype in self.dtypes]
         if self.has_proof:
             self.proof_index = [i for i in range(len(dtypes)) if dtypes[i] == 'proof']
         else:

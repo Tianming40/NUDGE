@@ -162,7 +162,7 @@ def get_metalang(lark_path, lang_base_path, dataset, n, exhaustion = False, filt
     metaconsts = generate_metaconsts(generate_atoms(lang, True), n, head, lang, patterns)
 
     metalang = du.load_metalanguage(metaconsts)
-    meta_bk_true = du.load_meta_clauses(du.base_path + 'clauses.txt', metalang)
+    meta_bk_true = du.load_meta_clauses(du.base_path + 'clauses.txt', metalang, atoms)
     meta_bk = du.load_meta_atoms(du.base_path + 'bk.txt', metalang)
     meta_bk += meta_bk_true
     meta_interpreter = du.load_interpreter(du.base_path + 'naive_meta_interpreter.txt', metalang)
@@ -200,7 +200,7 @@ def generate_metaconsts(atoms, n, head, lang,patterns):
     ite_body_atoms = []
     for atom in atoms:
         if atom in head:
-            meta_atom = MetaConst(atom,  dtype='atom')
+            meta_atom = MetaConst(atom,  dtype=DataType('atom'))
             head_atoms.append(meta_atom)
 
     # for i in range(1, n+1):
@@ -213,68 +213,73 @@ def generate_metaconsts(atoms, n, head, lang,patterns):
     for pattern in patterns:
         theta_list = generate_subs(lang, pattern)
         for the in theta_list:
-            for th in the:
-                body = [subs(bi, th[0], th[1]) for bi in pattern]
-                body_cons = MetaConst(body, dtype='atoms')
-                metaconsts.append(body_cons)
+            body_cons = [subs_list(bi, the) for bi in pattern]
+
+            body_consts = MetaConst(body_cons, dtype=DataType('atoms'))
+            metaconsts.append(body_consts)
 
     metaconsts += head_atoms
     return metaconsts
 
 
-def generate_subs(lang, body):
-    """Generate substitutions from given body atoms.
+def generate_subs( lang, body):
+        """Generate substitutions from given body atoms.
 
-    Generate the possible substitutions from given list of atoms. If the body contains any variables,
-    then generate the substitutions by enumerating constants that matches the data type.
-    !!! ASSUMPTION: The body has variables that have the same data type
-        e.g. variables O1(object) and Y(color) cannot appear in one clause !!!
+        Generate the possible substitutions from given list of atoms. If the body contains any variables,
+        then generate the substitutions by enumerating constants that matches the data type.
+        Args:
+            body (list(atom)): The body atoms which may contain existentially quantified variables.
 
-    Args:
-        body (list(atom)): The body atoms which may contain existentially quantified variables.
+        Returns:
+            theta_list (list(substitution)): The list of substitutions of the given body atoms.
+        """
+        # example: body = [on_left(O2,O1)]
+        # extract all variables and corresponding data types from given body atoms
+        var_dtype_list = []
+        dtypes = []
+        vars = []
+        for atom in body:
+            terms = atom.terms
+            for i, term in enumerate(terms):
+                if term.is_var():
+                    v = term
+                    dtype = atom.pred.dtypes[i]
+                    var_dtype_list.append((v, dtype))
+                    dtypes.append(dtype)
+                    vars.append(v)
+        # in case there is no variables in the body
+        if len(list(set(dtypes))) == 0:
+            return []
 
-    Returns:
-        theta_list (list(substitution)): The list of substitutions of the given body atoms.
-    """
-    # extract all variables and corresponding data types from given body atoms
-    var_dtype_list = []
-    dtypes = []
-    vars = []
-    for atom in body:
-        terms = atom.terms
-        for i, term in enumerate(terms):
-            if term.is_var():
-                v = term
-                dtype = atom.pred.dtypes[i]
-                var_dtype_list.append((v, dtype))
-                dtypes.append(dtype)
-                vars.append(v)
-    # in case there is no variables in the body
-    if len(list(set(dtypes))) == 0:
-        return []
-    # check the data type consistency
-    assert len(list(set(dtypes))) == 1, "Invalid existentially quantified variables. " + \
-                                        str(len(list(set(dtypes)))) + " data types in the body: " + str(
-        body) + " dypes: " + str(dtypes)
+        # {O2: [obj2, obj3, obj4, obj5, obj6, obj7, obj8, obj9, obj10, obj11], O1: [obj1]}
+        var_to_consts_dic = {}
+        for v, dtype in var_dtype_list:
+            if not v in var_to_consts_dic:
+                var_to_consts_dic[v] = lang.get_by_dtype(dtype)
 
-    vars = list(set(vars))
-    n_vars = len(vars)
-    consts = lang.get_by_dtype(dtypes[0])
+        # [[obj2, obj3, obj4, obj5, obj6, obj7, obj8, obj9, obj10, obj11], [obj1]]
+        subs_consts_list = list(var_to_consts_dic.values())
+        # for v in vars:
+        #     subs_consts_list.append(var_to_consts_dic[v])
 
-    # e.g. if the data type is shape, then subs_consts_list = [(red,), (yellow,), (blue,)]
-    subs_consts_list = itertools.permutations(consts, n_vars)
+        # [(obj2, obj1), (obj3, obj1), (obj4, obj1), (obj5, obj1), (obj6, obj1), (obj7, obj1), (obj8, obj1), (obj9, obj1), (obj10, obj1), (obj11, obj1)]
+        subs_consts_list_by_product = list(itertools.product(*subs_consts_list))
 
-    theta_list = []
-    # generate substitutions by combining variables to the head of subs_consts_list
-    for subs_consts in subs_consts_list:
-        theta = []
-        for i, const in enumerate(subs_consts):
-            s = (vars[i], const)
-            theta.append(s)
-        theta_list.append(theta)
-    # e.g. theta_list: [[(Z, red)], [(Z, yellow)], [(Z, blue)]]
-    # print("theta_list: ", theta_list)
-    return theta_list
+        # [O2, O1]
+        subs_vars = list(var_to_consts_dic.keys())
+
+        # [[(O2, obj2), (O1, obj1)], [(O2, obj3), (O1, obj1)], ...]
+        theta_list = []
+        for subs_consts in subs_consts_list_by_product:
+            theta = []
+
+            for i, const in enumerate(subs_consts):
+                s = (subs_vars[i], const)
+                theta.append(s)
+            theta_list.append(theta)
+        return theta_list
+
+
 
 def ispattern(atoms, pattern):
     atomspattern = []
@@ -299,8 +304,8 @@ def generate_metaatoms(lang, bk, exhaustion = False):
                 args = list(args)
                 metaatoms.append(MetaAtom(pred, args))
 
-    metasolveture = MetaAtom(lang.get_meta_pred_by_name('solve'), [MetaConst(true, dtype='atom')])
-    metasolvefalse = MetaAtom(lang.get_meta_pred_by_name('solve'), [MetaConst(false, dtype='atom')])
+    metasolveture = MetaAtom(lang.get_meta_pred_by_name('solve'), [MetaConst(true, dtype=DataType('atom'))])
+    metasolvefalse = MetaAtom(lang.get_meta_pred_by_name('solve'), [MetaConst(false, dtype=DataType('atom'))])
     spec_meta_atom = [metasolvefalse, metasolveture]
     return spec_meta_atom + sorted(metaatoms)
 
