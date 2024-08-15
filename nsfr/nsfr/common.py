@@ -42,7 +42,7 @@ def get_meta_nsfr_model(env_name: str, rules: str, device: str, train=False):
     for clause in clauses:
         if len(clause.body) > n:
             n = len(clause.body)
-    metalang, meta_bk, meta_interpreter, meta_atoms = get_metalang(lark_path, lang_base_path, rules, n, exhaustion = False, filter=True)
+    metalang, meta_bk, meta_interpreter, meta_atoms = get_metalang(lark_path, lang_base_path, rules,  exhaustion = False, filter=True)
 
     val_fn_path = f"in/envs/{env_name}/valuation.py"
     val_module = ValuationModule(val_fn_path, metalang, device)

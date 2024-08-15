@@ -140,7 +140,7 @@ def get_searched_clauses(lark_path, lang_base_path, dataset_type, dataset):
 
 
 
-def get_metalang(lark_path, lang_base_path, dataset, n, exhaustion = False, filter=True):
+def get_metalang(lark_path, lang_base_path, dataset, exhaustion = False, filter=True):
 
     du = DataUtils(lark_path=lark_path, lang_base_path=lang_base_path, dataset=dataset)
     lang, clauses, bk, atoms = get_lang(lark_path, lang_base_path,  dataset)
@@ -155,7 +155,7 @@ def get_metalang(lark_path, lang_base_path, dataset, n, exhaustion = False, filt
         if atom.pred.name in head_predicate_names:
             head.append(atom)
 
-    filtered_atoms = [atom for atom in atoms if atom not in head and atom not in body]
+    # filtered_atoms = [atom for atom in atoms if atom not in head and atom not in body]
 
     patterns = get_patterns(clauses)
 
