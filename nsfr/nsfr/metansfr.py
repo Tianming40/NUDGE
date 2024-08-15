@@ -22,8 +22,8 @@ class MetaNSFReasoner(nn.Module):
         self.im = infer_module
         self.atoms = atoms
         self.bk = bk
-        self.meta_interpreter = meta_interpreter
-        self.clauses = clauses
+        self.obj_clauses = clauses
+        self.clauses = meta_interpreter
         self._train = train
         self.prednames = self.get_prednames()
         self.V_0 = []
@@ -34,7 +34,7 @@ class MetaNSFReasoner(nn.Module):
 
     def get_prednames(self):
         prednames = []
-        for clause in self.clauses:
+        for clause in self.obj_clauses:
             if clause.head.pred.name not in prednames:
                 prednames.append(clause.head.pred.name)
         return prednames

@@ -1,4 +1,5 @@
 from .logic import Clause, Atom, FuncTerm, Const, Var,MetaVar, Term, MetaConst,MetaAtom,MetaRule
+from .language import DataType
 
 
 def subs(exp, target_var, const):
@@ -103,8 +104,8 @@ def meta_subs_list(exp, theta_list):
                 body_var1_name,body_var2_name  = target_var.name.split('_')
                 body_var1 = MetaVar(body_var1_name)
                 body_var2 = MetaVar(body_var2_name)
-                const1 = MetaConst(const.value[:1],dtype='atoms')
-                const2 = MetaConst(const.value[1:],dtype='atoms')
+                const1 = MetaConst(const.value[:1],dtype=DataType('atoms'))
+                const2 = MetaConst(const.value[1:],dtype=DataType('atoms'))
                 body = [meta_subs(bi, body_var1, const1) for bi in body]
                 body = [meta_subs(bi, body_var2, const2) for bi in body]
             else:
@@ -333,6 +334,10 @@ def occur_check(variable, term):
     if type(term) == Const:
         return False
     elif type(term) == Var:
+        return variable.name == term.name
+    elif type(term) == MetaConst:
+        return False
+    elif type(term) == MetaVar:
         return variable.name == term.name
     else:
         # func term case

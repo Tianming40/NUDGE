@@ -159,7 +159,7 @@ def get_metalang(lark_path, lang_base_path, dataset, n, exhaustion = False, filt
 
     patterns = get_patterns(clauses)
 
-    metaconsts = generate_metaconsts(generate_atoms(lang, True), n, head, lang, patterns)
+    metaconsts = generate_metaconsts(generate_atoms(lang, True), head, lang, patterns)
 
     metalang = du.load_metalanguage(metaconsts)
     meta_bk_true = du.load_meta_clauses(du.base_path + 'clauses.txt', metalang, atoms)
@@ -193,7 +193,7 @@ def get_patterns(clauses):
 
 
 
-def generate_metaconsts(atoms, n, head, lang,patterns):
+def generate_metaconsts(atoms, head, lang,patterns):
     # FIxme modify
     metaconsts = []
     head_atoms = []
