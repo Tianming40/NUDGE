@@ -385,10 +385,9 @@ def get_proof_tree(atoms, bk, metalang):
     for atom in atoms:
         if atom.pred.has_proof:
             if atom.pred.name == 'solve*' and len(atom.terms[0].value)>1 :
-                atom_with_proof = get_proof_for_many_Atoms(atom, bk, metalang)
+                atoms_with_proof += get_proof_for_many_Atoms(atom, bk, metalang)
             else:
-                atom_with_proof = get_proof_for_single_Atom(atom, bk, metalang)
-            atoms_with_proof+=atom_with_proof
+                atoms_with_proof += get_proof_for_single_Atom(atom, bk, metalang)
         else:
             atoms_with_proof.append(atom)
     return atoms_with_proof
