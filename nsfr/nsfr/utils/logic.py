@@ -4,6 +4,7 @@ from nsfr.fol.logic import *
 from nsfr.fol.logic_ops import *
 from nsfr.fol.data_utils import DataUtils
 from nsfr.fol.language import DataType
+import copy
 
 p_ = Predicate('.', 1, [DataType('spec')])
 false = Atom(p_, [Const('__F__', dtype=DataType('spec'))])
@@ -165,14 +166,65 @@ def get_metalang(lark_path, lang_base_path, dataset, exhaustion = False, filter=
     meta_bk_true = du.load_meta_clauses(du.base_path + 'clauses.txt', metalang, atoms)
     meta_bk = du.load_meta_atoms(du.base_path + 'bk.txt', metalang)
     meta_bk += meta_bk_true
-    meta_interpreter = du.load_interpreter(du.base_path + 'naive_meta_interpreter.txt', metalang)
-    meta_atoms = generate_metaatoms(metalang, bk, exhaustion )
+    meta_interpreter = du.load_interpreter(du.base_path + 'proof_tree_interpreter.txt', metalang)
+
+    n = 0
+    for clause in clauses:
+        if len(clause.body) > n:
+            n = len(clause.body)
+    metalang = metalang_extend_proof(n, metalang, bk, head, body, exhaustion)
+
+
+    metalang,meta_atoms = generate_metaatoms(metalang, meta_bk, exhaustion )
     if filter:
         meta_atoms = [atom for atom in meta_atoms if not (atom.pred.name == 'clause' and atom not in meta_bk)]
         return metalang, meta_bk, meta_interpreter, meta_atoms
     else:
         return metalang, meta_bk, meta_interpreter, meta_atoms
 
+
+def get_value(atom,bk):
+    if atom in bk:
+        prob = 1
+    elif type(atom.pred) == NeuralPredicate:
+        prob = 0
+       # prob = vm
+    else:
+        prob = 0
+    return prob
+
+def metalang_extend_proof(n, metalang, bk, head, body, exhaustion = False):
+    if exhaustion:
+        consts_proof = []
+        atoms_list = []
+        for atom in body:
+            meta_proof = MetaConst(proof([atom],get_value(atom, bk)),dtype=DataType('proof'))
+            consts_proof.append(meta_proof)
+        for const in metalang.metaconsts:
+            if const.dtype == DataType('atoms'):
+                atoms_list.append(const)
+            # if const.dtype == 'atom':
+            #     atoms_list.append(MetaConst([const.value],dtype = 'atoms'))
+
+        for i in range(n):
+            new_proofs = set()
+
+            current_combinations = list(itertools.product(consts_proof, repeat=2))
+            filtered_combinations = [combo for combo in current_combinations if combo[0] != combo[1]]
+
+            for combination in filtered_combinations:
+                for atom in atoms_list:
+                    new_meta_proof = MetaConst(proof(atom, [combination]), dtype=DataType('proof'))
+                    new_proofs.add(new_meta_proof)
+
+            consts_proof.extend(new_proofs)
+            consts_proof = list(set(consts_proof))
+
+        metalang.metaconsts += consts_proof
+    else:
+        metalang.metaconsts.append(MetaConst(value=proof(atoms=None, tree=None), dtype=DataType('proof')))
+
+    return metalang
 
 def get_patterns(clauses):
     all_patterns = []
@@ -293,6 +345,7 @@ def ispattern(atoms, pattern):
 
 def generate_metaatoms(lang, bk, exhaustion = False):
     metaatoms = []
+    consts_proof =[]
     for pred in lang.metapreds:
         dtypes = pred.dtypes
         consts_list = [lang.get_meta_by_dtype(dtype) for dtype in dtypes]
@@ -304,10 +357,116 @@ def generate_metaatoms(lang, bk, exhaustion = False):
                 args = list(args)
                 metaatoms.append(MetaAtom(pred, args))
 
-    metasolveture = MetaAtom(lang.get_meta_pred_by_name('solve'), [MetaConst(true, dtype=DataType('atom'))])
-    metasolvefalse = MetaAtom(lang.get_meta_pred_by_name('solve'), [MetaConst(false, dtype=DataType('atom'))])
+    if not exhaustion:
+        metaatoms = get_proof_tree(metaatoms, bk, lang)
+        for atom in metaatoms:
+            if atom.pred.has_proof:
+                consts_proof.append(atom.terms[atom.pred.proof_index[0]])
+
+        lang.metaconsts += consts_proof
+        lang.metaconsts.append(MetaConst(value=proof(atoms=MetaConst(true, dtype=DataType('atom')), tree=1),dtype=DataType('proof')))
+        lang.metaconsts.append(MetaConst(value=proof(atoms=MetaConst(false, dtype=DataType('atom')), tree=0),dtype=DataType('proof')))
+        lang.metaconsts.remove(MetaConst(value=proof(atoms=None, tree=None), dtype=DataType('proof')))
+
+    metasolveture = MetaAtom(lang.get_meta_pred_by_name('solve'), [MetaConst(true, dtype=DataType('atom')),
+                                                                   MetaConst(value=proof(
+                                                                       atoms=MetaConst(true, dtype=DataType('atom')), tree=1),
+                                                                       dtype=DataType('proof'))])
+    metasolvefalse = MetaAtom(lang.get_meta_pred_by_name('solve'), [MetaConst(false, dtype=DataType('atom')),
+                                                                    MetaConst(value=proof(
+                                                                        atoms=MetaConst(false, dtype=DataType('atom')),
+                                                                        tree=0), dtype=DataType('proof'))])
     spec_meta_atom = [metasolvefalse, metasolveture]
-    return spec_meta_atom + sorted(metaatoms)
+    return lang,spec_meta_atom + sorted(metaatoms)
 
 
+def get_proof_tree(atoms, bk, metalang):
+    atoms_with_proof = []
+    for atom in atoms:
+        if atom.pred.has_proof:
+            if atom.pred.name == 'solve*' and len(atom.terms[0].value)>1 :
+                atom_with_proof = get_proof_for_many_Atoms(atom, bk, metalang)
+            else:
+                atom_with_proof = get_proof_for_single_Atom(atom, bk, metalang)
+            atoms_with_proof+=atom_with_proof
+        else:
+            atoms_with_proof.append(atom)
+    return atoms_with_proof
+
+def get_bk_clauses_group(bk):
+    clause_groups = {}
+    for atom in bk:
+        if atom.pred.name == 'clause':
+            term_0 = atom.terms[0].value
+            if term_0 not in clause_groups:
+                clause_groups[term_0] = []
+            clause_groups[term_0].append(atom)
+    return clause_groups
+
+
+def get_proof_for_single_Atom(atom,bk,metalang):
+    solve_pred = metalang.get_meta_pred_by_name('solve*')
+    Atom_with_proof = []
+    bk_without_meta = []
+    for bkatom in bk:
+        if bkatom.pred.name == 'solve*':
+            bk_without_meta.append(bkatom.terms[0].value[0])
+    bk_without_meta.append(true)
+    bk_atom_has_body = get_bk_clauses_group(bk)
+
+
+    if atom.pred.name == 'solve*' :
+        atom_with_proof = copy.deepcopy(atom)
+        atom_with_proof.terms[1].value.atoms = atom.terms[0]
+        atom_with_proof.terms[1].value.tree = get_value(atom.terms[0].value[0], bk_without_meta)
+        Atom_with_proof.append(atom_with_proof)
+    elif atom.pred.name == 'solve':
+        atom_with_proof = copy.deepcopy(atom)
+        atom_with_proof.terms[1].value.atoms = atom.terms[0]
+        subs_list = bk_atom_has_body[atom.terms[0].value]
+        for i, subs in enumerate(subs_list):
+            bodyatom = MetaAtom(solve_pred, [subs.terms[1], MetaConst(value=proof(atoms=None, tree=None), dtype=DataType('proof'))])
+            atom_with_proof_body = get_proof_tree([bodyatom],bk,metalang)
+            for _atom in atom_with_proof_body:
+                new_atom = copy.deepcopy(atom_with_proof)
+                new_atom.terms[1].value.atoms = subs.terms[1]
+                new_atom.terms[1].value.tree = _atom.terms[1].value.tree
+                Atom_with_proof.append(new_atom)
+    return flatten(Atom_with_proof)
+
+def get_proof_for_many_Atoms(atom,bk,metalang):
+    # 返回list！！！！
+    solve_pred = metalang.get_meta_pred_by_name('solve*')
+    Atom_with_proof=[]
+    atom_with_proof = copy.deepcopy(atom)
+    atom_with_proof.terms[1].value.atoms = atom.terms[0]
+    atom_with_proof.terms[1].value.tree = []
+    first_atom = MetaAtom(solve_pred, [MetaConst(value=[atom_with_proof.terms[0].value[0]], dtype=DataType('atoms')),
+                                       MetaConst(value=proof(atoms=None, tree=None), dtype=DataType('proof'))])
+    proof_list = get_proof_for_single_Atom(first_atom, bk, metalang)
+    if len(atom.terms[0].value) == 2:
+        second_atom = MetaAtom(solve_pred, [MetaConst(value=[atom_with_proof.terms[0].value[1]], dtype=DataType('atoms')),
+                                       MetaConst(value=proof(atoms=None, tree=None), dtype=DataType('proof'))])
+        second_proof_list = get_proof_for_single_Atom(second_atom, bk, metalang)
+        for firstproof in proof_list:
+            in_proof = copy.deepcopy(atom_with_proof)
+            in_proof.terms[1].value.tree.append(firstproof.terms[1].value)
+            for secondproof in second_proof_list:
+                new_atom_with_proof = copy.deepcopy(in_proof)
+                new_atom_with_proof.terms[1].value.tree.append(secondproof.terms[1].value)
+                Atom_with_proof.append(new_atom_with_proof)
+
+    else:
+        second_atom = MetaAtom(solve_pred, [MetaConst(value=atom_with_proof.terms[0].value[1:], dtype=DataType('atoms')),
+                                            MetaConst(value=proof(atoms=None, tree=None), dtype=DataType('proof'))])
+        second_proof_list = get_proof_for_many_Atoms(second_atom, bk, metalang)
+
+        for firstproof in proof_list:
+            in_proof = copy.deepcopy(atom_with_proof)
+            in_proof.terms[1].value.tree.append(firstproof.terms[1].value)
+            for secondproof in second_proof_list:
+                new_atom_with_proof = copy.deepcopy(in_proof)
+                new_atom_with_proof.terms[1].value.tree.append(secondproof.terms[1].value)
+                Atom_with_proof.append(new_atom_with_proof)
+    return flatten(Atom_with_proof)
 

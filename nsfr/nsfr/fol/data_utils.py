@@ -4,7 +4,7 @@ from lark import Lark
 from .exp_parser import ExpTree
 from .language import Language, DataType, MetaLanguage
 from .logic_ops import unify,subs_list
-from .logic import Predicate, NeuralPredicate, FuncSymbol, Const, MetaPredicate,MetaRule,MetaAtom, Atom,MetaConst
+from .logic import Predicate, NeuralPredicate, FuncSymbol, Const, MetaPredicate,MetaRule,MetaAtom, Atom,MetaConst,proof
 import itertools
 
 class DataUtils(object):
@@ -251,7 +251,7 @@ class DataUtils(object):
                     atom = ExpTree(lang).transform(tree)
                     solve_pred=lang.get_meta_pred_by_name('solve*')
                     metaconst = MetaConst([atom],dtype=DataType('atoms'))
-                    metasolve = MetaAtom(solve_pred, [metaconst])
+                    metasolve = MetaAtom(solve_pred, [metaconst, MetaConst(proof(atoms=metaconst, tree = 1),dtype=DataType('proof'))])
                     metaatoms.append(metasolve)
         return metaatoms
 
@@ -289,6 +289,6 @@ class DataUtils(object):
         preds = self.load_preds(self.base_path + 'preds.txt') + \
                 self.load_neural_preds(self.base_path + 'neural_preds.txt')
         consts = self.load_consts(self.base_path + 'consts.txt')
-        metapreds = self.load_meta_preds(self.base_path + 'meta_preds.txt')
+        metapreds = self.load_meta_preds(self.base_path + 'meta_preds_proof.txt')
         metalang = MetaLanguage(preds, metapreds, [], consts, metaconsts)
         return metalang

@@ -1,0 +1,2 @@
+solve*(A_B,PROOFA_PROOFB):-solve*(A,PROOFA),solve*(B,PROOFB).
+solve(A,PROOFB):-clause(A,B),solve*(B,PROOFB).

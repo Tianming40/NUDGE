@@ -869,15 +869,17 @@ class MetaVar(MetaTerm):
 
 
 class MetaPredicate(Predicate):
+
     # TODO
     def __init__(self, name, arity, dtypes):
+        from .language import DataType
         super(MetaPredicate, self).__init__(name, arity, dtypes)
         self.name = name
         self.arity = arity
         self.dtypes = dtypes
         self.has_proof = 'proof' in [dtype.__str__() for dtype in self.dtypes]
         if self.has_proof:
-            self.proof_index = [i for i in range(len(dtypes)) if dtypes[i] == 'proof']
+            self.proof_index = [i for i in range(len(dtypes)) if dtypes[i] == DataType('proof')]
         else:
             self.proof_index = None
 
