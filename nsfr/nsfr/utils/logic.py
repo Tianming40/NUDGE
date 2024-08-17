@@ -115,13 +115,21 @@ def get_index_by_predname(pred_str, atoms):
     assert 1, pred_str + ' not found.'
 
 def get_index_by_predname_meta(pred_str, metaatoms):
+    index_lst = []
     for i, metaatom in enumerate(metaatoms):
-        if metaatom.pred.name == 'solve' :
-            if metaatom.terms[0].value.pred.name == pred_str:
-                # print('+++++', metaatom)
-                return i
+        if metaatom.pred.name == 'solve' and metaatom.terms[0].value.pred.name == pred_str:
+            # print('+++++', metaatom)
+            index_lst.append(i)
+    return index_lst
     assert 1, pred_str + ' not found.'
 
+
+def get_index_for_tree(atoms,metaatoms):
+    # atoms is MetaConst
+    for i, metaatom in enumerate(metaatoms):
+        if metaatom.pred.name == 'solve*' and metaatom.terms[0].value[0].pred.name == atoms.value[0].pred.name:
+            return i
+    assert 1, str(atoms) + ' not found.'
 
 def parse_clauses(lang, clause_strs):
     du = DataUtils(lang)

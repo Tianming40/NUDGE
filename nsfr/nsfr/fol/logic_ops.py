@@ -97,7 +97,12 @@ def meta_subs_list(exp, theta_list):
         head = exp.head
         body = exp.body
         for target_var, const in theta_list:
-            if '_' in target_var.name and len(const.value) >1:
+            if const.dtype==DataType('atoms'):
+                const_value_length = len(const.value)
+            else:
+                const_value_length = 0
+
+            if '_' in target_var.name and const_value_length >1:
                 assert target_var.name.count('_') == 1, (f"InvalidUnderscoreCountError: The string '{target_var.name}' must contain exactly one underscore, "
                                                          f"but it contains {target_var.name.count('_')}.")
                 head = meta_subs(head, target_var, const)
@@ -106,6 +111,15 @@ def meta_subs_list(exp, theta_list):
                 body_var2 = MetaVar(body_var2_name)
                 const1 = MetaConst(const.value[:1],dtype=DataType('atoms'))
                 const2 = MetaConst(const.value[1:],dtype=DataType('atoms'))
+                body = [meta_subs(bi, body_var1, const1) for bi in body]
+                body = [meta_subs(bi, body_var2, const2) for bi in body]
+            elif '_' in target_var.name and const.dtype == DataType('proof'):
+                head = meta_subs(head, target_var, const)
+                body_var1_name, body_var2_name = target_var.name.split('_')
+                body_var1 = MetaVar(body_var1_name)
+                body_var2 = MetaVar(body_var2_name)
+                const1 = MetaConst(const.value.tree[0], dtype=DataType('proof'))
+                const2 = MetaConst(const.value.tree[1], dtype=DataType('proof'))
                 body = [meta_subs(bi, body_var1, const1) for bi in body]
                 body = [meta_subs(bi, body_var2, const2) for bi in body]
             else:

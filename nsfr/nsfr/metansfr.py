@@ -1,8 +1,10 @@
 import numpy as np
 import torch.nn as nn
 import torch
-from .fol.logic import Atom
-from nsfr.utils.logic import get_index_by_predname_meta
+from .fol.logic import *
+from .fol.language import DataType
+from nsfr.utils.logic import get_index_by_predname_meta,get_index_for_tree
+import copy
 import torch.nn.functional as F
 
 
@@ -62,15 +64,31 @@ class MetaNSFReasoner(nn.Module):
         """Extracting a value from the valuation tensor using a given predicate.
         """
         # v: batch * |atoms|
-        target_index = get_index_by_predname_meta(
-            pred_str=predname, metaatoms=self.atoms)
+        target_index_lst = get_index_by_predname_meta(pred_str=predname, metaatoms=self.atoms)
+
+        max_sum = float('-inf')
+        target_index = target_index_lst[0]
+
+        for index in target_index_lst:
+            current_sum = v[:, index].sum()
+            if current_sum > max_sum:
+                max_sum = current_sum
+                target_index = index
+
         # print('+++++++++++++++')
         # print(v)
         # print(v.shape)
         # print(target_index)
-        # print(v[:, target_index])
+        leaves = proof.find_leaf_values(self.meta_atoms[target_index].terms[1].value)
+        updated_leaves = []
+        for atoms, value in leaves:
+            new_value = v[:, get_index_for_tree(atoms, self.meta_atoms)].item()
+            updated_leaves.append((atoms, new_value))
+        new_tree = proof.reconstruct_proof(updated_leaves)
+        gotten_atom = copy.deepcopy(self.meta_atoms[target_index])
+        gotten_atom.terms[1].value = MetaConst(new_tree, dtype=DataType('proof'))
+        print(str(gotten_atom) + ' + ' + str(v[:, target_index].item()))
         return v[:, target_index]
-
     def predict_multi(self, v, prednames):
         """Extracting values from the valuation tensor using given predicates.
 
@@ -79,8 +97,15 @@ class MetaNSFReasoner(nn.Module):
         # v: batch * |atoms|
         target_indices = []
         for predname in prednames:
-            target_index = get_index_by_predname_meta(
+            target_index_lst = get_index_by_predname_meta(
                 pred_str=predname, metaatoms=self.atoms)
+            max_sum = float('-inf')
+            target_index = target_index_lst[0]
+            for index in target_index_lst:
+                current_sum = v[:, index].sum()
+                if current_sum > max_sum:
+                    max_sum = current_sum
+                    target_index = index
             target_indices.append(target_index)
         prob = torch.cat([v[:, i].unsqueeze(-1)
                          for i in target_indices], dim=1)
