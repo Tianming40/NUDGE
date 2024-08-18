@@ -6,6 +6,7 @@ from nsfr.utils.logic import get_lang, build_infer_module,get_metalang,build_met
 from nsfr.nsfr import NSFReasoner
 from nsfr.metansfr import MetaNSFReasoner
 from nsfr.valuation import ValuationModule
+from nsfr.fol.logic import NeuralPredicate
 
 
 def get_nsfr_model(env_name: str, rules: str, device: str, train=False):
@@ -43,6 +44,23 @@ def get_meta_nsfr_model(env_name: str, rules: str, device: str, train=False):
         if len(clause.body) > n:
             n = len(clause.body)
     metalang, meta_bk, meta_interpreter, meta_atoms = get_metalang(lark_path, lang_base_path, rules,  exhaustion = False, filter=True)
+
+    # for i, meta_atom in enumerate(meta_atoms):
+    #     # TODO modify here atom is metaatom
+    #     if meta_atom.pred.name == 'solve*' and type(meta_atom.terms[0].value) == list:
+    #         if len(meta_atom.terms[0].value) == 1 and type(meta_atom.terms[0].value[0].pred) == NeuralPredicate:
+    #             # TODO vm must be modified
+    #             print(meta_atom)
+    #             # print(V[:, i])
+    #         if meta_atom in meta_bk:
+    #             # V[:, i] += 1.0
+    #             print(meta_atom)
+    #     elif meta_atom.pred.name == 'clause' and type(meta_atom.terms[1].value) == list and meta_atom in meta_bk:
+    #         print(meta_atom)
+    # metasolveture = MetaAtom(self.lang.get_meta_pred_by_name('solve'), [MetaConst([true], dtype='atoms')])
+    # index = G.index(metasolveture)
+    # # print('ppppppppppp',index)
+    # # print('ssssssssssss',G[index])
 
     val_fn_path = f"in/envs/{env_name}/valuation.py"
     val_module = ValuationModule(val_fn_path, metalang, device)
