@@ -103,3 +103,9 @@ class MetaNSFReasoner(nn.Module):
         for atom in atoms:
             text += str(atom) + ', '
         return text
+
+    def get_predicate_valuation(self, predname: str, initial_valuation: bool = True):
+        valuation = self.V_0 if initial_valuation else self.V_T
+        target_index = get_index_by_predname_meta(pred_str=predname, metaatoms=self.atoms)
+        value = valuation[:, target_index].item()
+        return value
