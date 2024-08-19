@@ -45,6 +45,14 @@ def get_meta_nsfr_model(env_name: str, rules: str, device: str, train=False):
             n = len(clause.body)
     metalang, meta_bk, meta_interpreter, meta_atoms = get_metalang(lark_path, lang_base_path, rules,  exhaustion = False, filter=True)
 
+    current_directory = os.getcwd()
+    long_text_list = [str(meta_atom) for meta_atom in meta_atoms]
+    long_text = "\n".join(long_text_list)
+    file_name = "meta_atom_output.txt"
+    file_path = os.path.join(current_directory, file_name)
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(long_text)
+    print(f"the meta_atoms file has saved in {file_path}~~~~~~~~~~~~")
     # for i, meta_atom in enumerate(meta_atoms):
     #     # TODO modify here atom is metaatom
     #     if meta_atom.pred.name == 'solve*' and type(meta_atom.terms[0].value) == list:

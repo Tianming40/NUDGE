@@ -56,6 +56,7 @@ class MetaNSFReasoner(nn.Module):
         return probs
     def get_predictions(self, V_T, prednames):
         predicts = self.predict_multi(v=V_T, prednames=prednames)
+        print(predicts)
         return predicts
 
     def predict(self, v, predname):
@@ -79,8 +80,7 @@ class MetaNSFReasoner(nn.Module):
         # v: batch * |atoms|
         target_indices = []
         for predname in prednames:
-            target_index = get_index_by_predname_meta(
-                pred_str=predname, metaatoms=self.atoms)
+            target_index = get_index_by_predname_meta(pred_str=predname, metaatoms=self.atoms)
             target_indices.append(target_index)
         prob = torch.cat([v[:, i].unsqueeze(-1)
                          for i in target_indices], dim=1)

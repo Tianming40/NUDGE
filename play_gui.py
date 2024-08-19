@@ -10,6 +10,11 @@ parser.add_argument("-np", "--no_predicates", action="store_true")
 
 def find_latest_trained_checkpoint(agent_path):
     agent_path = Path(agent_path)
+
+    if agent_path.is_dir() and len(list(agent_path.glob("checkpoints/*"))) > 2:
+        print("Using checkpoints of", agent_path.absolute())
+        return agent_path
+
     for with_datestamp in sorted(agent_path.glob("*"), reverse=True):
         if len(list(with_datestamp.glob("checkpoints/*"))) > 2:
             print("Using checkpoints of", with_datestamp.absolute())
