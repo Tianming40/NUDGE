@@ -79,8 +79,7 @@ class MetaFactsConverter(nn.Module):
                 for clause, weight in self.clause_weight.items():
                     if meta_clause_unify(clause, meta_atom):
                         V[:, i] += torch.full((batch_size,), weight).to(torch.float32).to(self.device)
-                    else:
-                        V[:, i] += torch.ones((batch_size,)).to(torch.float32).to(self.device)
+                # V[:, i] += torch.ones((batch_size,)).to(torch.float32).to(self.device)
         # metasolveture = MetaAtom(self.lang.get_meta_pred_by_name('solve'), [MetaConst([true], dtype='atoms')])
         # index = G.index(metasolveture)
         # # print('ppppppppppp',index)
