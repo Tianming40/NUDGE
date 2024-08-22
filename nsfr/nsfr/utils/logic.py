@@ -117,7 +117,7 @@ def get_index_by_predname_meta(pred_str, metaatoms):
     for i, metaatom in enumerate(metaatoms):
         if metaatom.pred.name == 'solve' :
             if metaatom.terms[0].value.pred.name == pred_str:
-                print(i ,'+++++', metaatom)
+                # print(i ,'+++++', metaatom)
                 return i
     assert 1, pred_str + ' not found.'
 

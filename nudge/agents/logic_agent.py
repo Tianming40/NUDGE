@@ -18,8 +18,8 @@ class NsfrActorCritic(nn.Module):
         self.device =device
         self.rng = random.Random() if rng is None else rng
         self.env = env
-        # self.actor = get_nsfr_model(env.name, rules, device=device, train=True)
-        self.actor = get_meta_nsfr_model(env.name, rules, device=device, train=True)
+        self.actor = get_nsfr_model(env.name, rules, device=device, train=True)
+        # self.actor = get_meta_nsfr_model(env.name, rules, device=device, train=True)
         self.prednames = self.get_prednames()
 
         mlp_module_path = f"in/envs/{self.env.name}/mlp.py"
@@ -31,6 +31,59 @@ class NsfrActorCritic(nn.Module):
             torch.tensor([1.0 / self.num_actions for _ in range(self.num_actions)], device=device))
         self.upprior = Categorical(
             torch.tensor([0.9] + [0.1 / (self.num_actions-1) for _ in range(self.num_actions-1)], device=device))
+
+    def forward(self):
+        raise NotImplementedError
+
+    def act(self, logic_state, epsilon=0.0):
+        action_probs = self.actor(logic_state)
+
+        # e-greedy
+        if self.rng.random() < epsilon:
+            # random action with epsilon probability
+            dist = self.uniform
+            action = dist.sample()
+        else:
+            dist = Categorical(action_probs)
+            action = (action_probs[0] == max(action_probs[0])).nonzero(as_tuple=True)[0].squeeze(0).to(self.device)
+            if torch.numel(action) > 1:
+                action = action[0]
+        # action = dist.sample()
+        action_logprob = dist.log_prob(action)
+        return action.detach(), action_logprob.detach()
+
+    def evaluate(self, neural_state, logic_state, action):
+        action_probs = self.actor(logic_state)
+        dist = Categorical(action_probs)
+        action_logprobs = dist.log_prob(action)
+        dist_entropy = dist.entropy()
+        state_values = self.critic(neural_state)
+
+        return action_logprobs, state_values, dist_entropy
+
+    def get_prednames(self):
+        return self.actor.get_prednames()
+
+class MetaNsfrActorCritic(nn.Module):
+
+    def __init__(self, env: NudgeBaseEnv, rules: str, device, clause_weights,rng=None):
+        super(MetaNsfrActorCritic, self).__init__()
+        self.device = device
+        self.rng = random.Random() if rng is None else rng
+        self.env = env
+        self.actor = get_meta_nsfr_model(env.name, rules,clause_weight= clause_weights ,device=device, train=False)
+        self.prednames = self.get_prednames()
+
+        mlp_module_path = f"in/envs/{self.env.name}/mlp.py"
+        module = load_module(mlp_module_path)
+        self.critic = module.MLP(out_size=1, logic=True)
+
+        self.num_actions = len(self.prednames)
+        self.uniform = Categorical(
+            torch.tensor([1.0 / self.num_actions for _ in range(self.num_actions)], device=device))
+        self.upprior = Categorical(
+            torch.tensor([0.9] + [0.1 / (self.num_actions - 1) for _ in range(self.num_actions - 1)],
+                         device=device))
 
     def forward(self):
         raise NotImplementedError

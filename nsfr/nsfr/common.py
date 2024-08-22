@@ -32,7 +32,7 @@ def get_nsfr_model(env_name: str, rules: str, device: str, train=False):
     return NSFR
 
 
-def get_meta_nsfr_model(env_name: str, rules: str, device: str, train=False):
+def get_meta_nsfr_model(env_name: str, rules: str, device: str,clause_weight:dict, train=False):
 
     current_path = os.path.dirname(__file__)
     lark_path = os.path.join(current_path, 'lark/exp.lark')
@@ -73,14 +73,14 @@ def get_meta_nsfr_model(env_name: str, rules: str, device: str, train=False):
     val_fn_path = f"in/envs/{env_name}/valuation.py"
     val_module = ValuationModule(val_fn_path, metalang, device)
 
-    FC = MetaFactsConverter(lang=metalang, valuation_module=val_module, device=device)
+    FC = MetaFactsConverter(lang=metalang, valuation_module=val_module, clause_weight=clause_weight,device=device)
     # prednames = []
     # for clause in clauses:
     #     if clause.head.pred.name not in prednames:
     #         prednames.append(clause.head.pred.name)
     # m = len(prednames)
     # m = 5
-    IM = build_meta_infer_module(meta_interpreter, meta_atoms, metalang, m=len(meta_interpreter), infer_step=n+1,
+    IM = build_meta_infer_module(meta_interpreter, meta_atoms, metalang, m=len(meta_interpreter), infer_step=n,
                                  train=train, device=device)
     # Neuro-Symbolic Forward Reasoner
 

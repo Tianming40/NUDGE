@@ -28,8 +28,8 @@ if __name__ == "__main__":
     agent_path = args.agent_path.replace("game", args.game)
     trained_checkpoint = find_latest_trained_checkpoint(agent_path)
     renderer = Renderer(agent_path=trained_checkpoint,
-                        fps=100,
+                        fps=10000,
                         deterministic=False,
                         env_kwargs=dict(render_oc_overlay=True),
-                        render_predicate_probs=not(args.no_predicates))
+                        render_predicate_probs=not(args.no_predicates),meta = True)
     renderer.run()
