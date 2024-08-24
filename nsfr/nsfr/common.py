@@ -63,7 +63,7 @@ def get_meta_nsfr_model(env_name: str, rules: str, device: str,clause_weight:dic
     #         prednames.append(clause.head.pred.name)
     # m = len(prednames)
     # m = 5
-    IM = build_meta_infer_module(meta_interpreter, meta_atoms, metalang, m=len(meta_interpreter), infer_step=n,
+    IM = build_meta_infer_module(meta_interpreter, meta_atoms, metalang, m=len(meta_interpreter), infer_step=n+1,
                                  train=train, device=device)
     # Neuro-Symbolic Forward Reasoner
 

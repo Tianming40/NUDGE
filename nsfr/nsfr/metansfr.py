@@ -58,7 +58,7 @@ class MetaNSFReasoner(nn.Module):
         return probs
     def get_predictions(self, V_T, prednames):
         predicts = self.predict_multi(v=V_T, prednames=prednames)
-        print(predicts)
+        # print(predicts)
         return predicts
 
     def predict(self, v, predname):
@@ -80,13 +80,13 @@ class MetaNSFReasoner(nn.Module):
         # print(v)
         # print(v.shape)
         # print(target_index)
-        leaves = proof.find_leaf_values(self.meta_atoms[target_index].terms[1].value)
+        leaves = proof.find_leaf_values(self.atoms[target_index].terms[1].value)
         updated_leaves = []
         for atoms, value in leaves:
-            new_value = v[:, get_index_for_tree(atoms, self.meta_atoms)].item()
+            new_value = v[:, get_index_for_tree(atoms, self.atoms)].item()
             updated_leaves.append((atoms, new_value))
         new_tree = proof.reconstruct_proof(updated_leaves)
-        gotten_atom = copy.deepcopy(self.meta_atoms[target_index])
+        gotten_atom = copy.deepcopy(self.atoms[target_index])
         gotten_atom.terms[1].value = MetaConst(new_tree, dtype=DataType('proof'))
         print(str(gotten_atom) + ' + ' + str(v[:, target_index].item()))
         return v[:, target_index]
@@ -103,7 +103,7 @@ class MetaNSFReasoner(nn.Module):
             max_sum = float('-inf')
             target_index = target_index_lst[0]
             for index in target_index_lst:
-                current_sum = v[:, index].sum()
+                current_sum = v[:, index]
                 if current_sum > max_sum:
                     max_sum = current_sum
                     target_index = index
@@ -132,6 +132,25 @@ class MetaNSFReasoner(nn.Module):
 
     def get_predicate_valuation(self, predname: str, initial_valuation: bool = True):
         valuation = self.V_0 if initial_valuation else self.V_T
-        target_index = get_index_by_predname_meta(pred_str=predname, metaatoms=self.atoms)
+        target_index_lst = get_index_by_predname_meta(pred_str=predname, metaatoms=self.atoms)
+
+        max_sum = float('-inf')
+        target_index = target_index_lst[0]
+
+        for index in target_index_lst:
+            current_sum = valuation[:, index].sum()
+            if current_sum > max_sum:
+                max_sum = current_sum
+                target_index = index
         value = valuation[:, target_index].item()
+
+        leaves = proof.find_leaf_values(self.atoms[target_index].terms[1].value)
+        updated_leaves = []
+        for atoms, old_value in leaves:
+            new_value = valuation[:, get_index_for_tree(atoms, self.atoms)].item()
+            updated_leaves.append((atoms, new_value))
+        new_tree = proof.reconstruct_proof(updated_leaves)
+        gotten_atom = copy.deepcopy(self.atoms[target_index])
+        gotten_atom.terms[1].value = MetaConst(new_tree, dtype=DataType('proof'))
+        # print(str(gotten_atom) + ' + ' + str(valuation[:, target_index].item()))
         return value
