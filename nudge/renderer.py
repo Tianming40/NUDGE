@@ -30,14 +30,16 @@ class Renderer:
                  fps: int = None,
                  deterministic=True,
                  env_kwargs: dict = None,
-                 render_predicate_probs=True):
+                 render_predicate_probs=True,
+                 meta = False):
 
         self.fps = fps
         self.deterministic = deterministic
         self.render_predicate_probs = render_predicate_probs
 
         # Load model and environment
-        self.model = load_model(agent_path, env_kwargs_override=env_kwargs, device=device)
+        self.meta = meta
+        self.model = load_model(agent_path, env_kwargs_override=env_kwargs, device=device, meta=self.meta)
         self.env = self.model.env
         self.env.reset()
 

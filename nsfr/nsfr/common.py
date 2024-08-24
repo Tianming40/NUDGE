@@ -31,7 +31,7 @@ def get_nsfr_model(env_name: str, rules: str, device: str, train=False):
     return NSFR
 
 
-def get_meta_nsfr_model(env_name: str, rules: str, device: str, train=False):
+def get_meta_nsfr_model(env_name: str, rules: str, device: str,clause_weight:dict, train=False):
 
     current_path = os.path.dirname(__file__)
     lark_path = os.path.join(current_path, 'lark/exp.lark')
@@ -44,10 +44,19 @@ def get_meta_nsfr_model(env_name: str, rules: str, device: str, train=False):
             n = len(clause.body)
     metalang, meta_bk, meta_interpreter, meta_atoms = get_metalang(lark_path, lang_base_path, rules,  exhaustion = False, filter=True)
 
+    current_directory = os.getcwd()
+    long_text_list = [str(meta_atom) for meta_atom in meta_atoms]
+    long_text = "\n".join(long_text_list)
+    file_name = "meta_atom_output.txt"
+    file_path = os.path.join(current_directory, file_name)
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(long_text)
+    print(f"the meta_atoms file has saved in {file_path}~~~~~~~~~~~~")
+
     val_fn_path = f"in/envs/{env_name}/valuation.py"
     val_module = ValuationModule(val_fn_path, metalang, device)
 
-    FC = MetaFactsConverter(lang=metalang, valuation_module=val_module, device=device)
+    FC = MetaFactsConverter(lang=metalang, valuation_module=val_module, clause_weight=clause_weight,device=device)
     # prednames = []
     # for clause in clauses:
     #     if clause.head.pred.name not in prednames:

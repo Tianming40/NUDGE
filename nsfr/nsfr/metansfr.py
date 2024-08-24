@@ -58,6 +58,7 @@ class MetaNSFReasoner(nn.Module):
         return probs
     def get_predictions(self, V_T, prednames):
         predicts = self.predict_multi(v=V_T, prednames=prednames)
+        print(predicts)
         return predicts
 
     def predict(self, v, predname):

@@ -7,7 +7,7 @@ from pathlib import Path
 import os
 import re
 
-from .agents.logic_agent import NsfrActorCritic
+from .agents.logic_agent import NsfrActorCritic, MetaNsfrActorCritic
 from .agents.neural_agent import ActorCritic
 from nudge.env import NudgeBaseEnv
 
@@ -54,7 +54,7 @@ def simulate_prob(extracted_states, num_of_objs, key_picked):
 
 def load_model(model_dir,
                env_kwargs_override: dict = None,
-               device=torch.device('cuda:0')):
+               device = torch.device('cuda:0'), meta = False):
     # Determine all relevant paths
     model_dir = Path(model_dir)
     config_path = model_dir / "config.yaml"
@@ -87,6 +87,10 @@ def load_model(model_dir,
     with open(checkpoint_path, "rb") as f:
         model.load_state_dict(state_dict=torch.load(f, map_location=torch.device('cpu')))
 
+    if meta:
+        clause_weights = get_weights(model)
+        model = MetaNsfrActorCritic(env, device=device, rules=rules, clause_weights=clause_weights).to(device)
+
     return model
 
 
@@ -111,6 +115,28 @@ def get_most_recent_checkpoint_step(checkpoint_dir):
                 highest_step = step
     return highest_step
 
+def get_weights(agent, mode = "softor"):
+    try:
+        nsfr_actor = agent.actor
+    except AttributeError:
+        nsfr_actor = agent.policy.actor
+    if mode == "argmax":
+        C = nsfr_actor.clauses
+        Ws_softmaxed = torch.softmax(nsfr_actor.im.W, 1)
+        for i, W_ in enumerate(Ws_softmaxed):
+            max_i = np.argmax(W_.detach().cpu().numpy())
+            print('C_' + str(i) + ': ',
+                  C[max_i], 'W_' + str(i) + ':', round(W_[max_i].detach().cpu().item(), 3))
+    elif mode == "softor":
+        W_softmaxed = torch.softmax(nsfr_actor.im.W, 1)
+        w = softor(W_softmaxed, dim=0)
+        clause_weights = {}
+
+        for i, c in enumerate(nsfr_actor.clauses):
+            weight = w[i].detach().cpu().item()
+            clause_weights[c] = weight
+
+        return clause_weights
 
 def print_program(agent, mode="softor"):
     """Print a summary of logic programs using continuous weights."""

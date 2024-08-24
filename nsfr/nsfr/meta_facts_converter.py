@@ -4,7 +4,7 @@ from .fol.logic import NeuralPredicate,Clause,Atom
 from tqdm import tqdm
 from .fol.logic import *
 from .fol.language import DataType, MetaLanguage
-from .fol.logic_ops import unify,subs_list
+from .fol.logic_ops import unify,subs_list,meta_clause_unify
 
 p_ = Predicate('.', 1, [DataType('spec')])
 false = Atom(p_, [Const('__F__', dtype=DataType('spec'))])
@@ -16,13 +16,14 @@ class MetaFactsConverter(nn.Module):
 
 
 
-    def __init__(self, lang, valuation_module, device=None):
+    def __init__(self, lang, valuation_module, clause_weight,device=None):
         super(MetaFactsConverter, self).__init__()
         # self.e = perception_module.e
         self.e = 0
         # self.d = perception_module.d
         self.d = 0
         self.lang = lang
+        self.clause_weight = clause_weight
         self.vm = valuation_module  # valuation functions
         self.device = device
 
@@ -74,8 +75,10 @@ class MetaFactsConverter(nn.Module):
                 if meta_atom in B:
                 # V[:, i] += 1.0
                     V[:, i] += torch.ones((batch_size, )).to(torch.float32).to(self.device)
-            elif meta_atom.pred.name == 'clause' and type(meta_atom.terms[1].value) == list and meta_atom in B:
-                V[:, i] += torch.ones((batch_size,)).to(torch.float32).to(self.device)
+                elif meta_atom.pred.name == 'clause' and type(meta_atom.terms[1].value) == list and meta_atom in B:
+                    for clause, weight in self.clause_weight.items():
+                        if meta_clause_unify(clause, meta_atom):
+                            V[:, i] += torch.full((batch_size,), weight).to(torch.float32).to(self.device)
         # metasolveture = MetaAtom(self.lang.get_meta_pred_by_name('solve'), [MetaConst([true], dtype='atoms')])
         # index = G.index(metasolveture)
         # # print('ppppppppppp',index)

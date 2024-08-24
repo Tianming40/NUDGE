@@ -272,6 +272,18 @@ def meta_unify(meta_atoms):
                     return (0, [])
 
 
+def meta_clause_unify(clause,meta_clause):
+
+    if clause.head.pred != meta_clause.terms[0].value.pred:
+        return False
+    if len(clause.body) != len(meta_clause.terms[1].value):
+        return False
+    for i in range(len(meta_clause.terms[1].value)):
+        if clause.body[i].pred != meta_clause.terms[1].value[i].pred:
+            return False
+    return True
+
+
 def get_disagreements(terms):
     """
     get desagreements in the unification algorithm
