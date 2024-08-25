@@ -198,11 +198,12 @@ class Renderer:
 
     def _render_predicate_probs(self):
         anchor = (self.env_render_shape[0] + 10, 25)
+        max_width = PREDICATE_PROBS_COL_WIDTH - 12
 
         nsfr = self.nsfr_reasoner
         pred_vals = {pred: nsfr.get_predicate_valuation(pred, initial_valuation=False) for pred in nsfr.prednames}
         i_max = np.argmax(list(pred_vals.values()))
-        for i, (pred, val) in enumerate(pred_vals.items()):
+        for i, (pred, (val,atom)) in enumerate(pred_vals.items()):
             # Render cell background
             if i == i_max:
                 color = CELL_BACKGROUND_SELECTED
@@ -211,11 +212,71 @@ class Renderer:
             pygame.draw.rect(self.window, color, [
                 anchor[0] - 2,
                 anchor[1] - 2 + i * 35,
-                PREDICATE_PROBS_COL_WIDTH - 12,
+                max_width,
                 28
             ])
 
-            text = self.font.render(str(f"{100*val:.2f} - {pred}"), True, "white", None)
+            text = self.font.render(str(f"{100*val:.2f} - {atom}"), True, "white", None)
             text_rect = text.get_rect()
             text_rect.topleft = (self.env_render_shape[0] + 10, 25 + i * 35)
             self.window.blit(text, text_rect)
+
+
+    # def _wrap_text(self, text, max_width):
+    #
+    #     words = text.split(' ')
+    #     lines = []
+    #     current_line = ""
+    #
+    #     for word in words:
+    #         test_line = current_line + word + " "
+    #         test_width, _ = self.font.size(test_line)
+    #
+    #         if test_width <= max_width:
+    #             current_line = test_line
+    #         else:
+    #             lines.append(current_line)
+    #             current_line = word + " "
+    #
+    #     lines.append(current_line)
+    #     return lines
+    #
+    # def _render_predicate_probs(self):
+    #     anchor = (self.env_render_shape[0] + 10, 25)
+    #
+    #     nsfr = self.nsfr_reasoner
+    #     pred_vals = {pred: nsfr.get_predicate_valuation(pred, initial_valuation=False) for pred in nsfr.prednames}
+    #     i_max = np.argmax(list(pred_vals.values()))
+    #
+    #     current_y = anchor[1]
+    #
+    #     for i, (pred, (val, atom)) in enumerate(pred_vals.items()):
+    #         text_content = f"{100 * val:.2f} - {atom}"
+    #         max_text_width = PREDICATE_PROBS_COL_WIDTH - 20
+    #         lines = self._wrap_text(text_content, max_text_width)
+    #
+    #         line_height = self.font.get_height()
+    #         rect_height = line_height * len(lines) + 10
+    #
+    #         if i == i_max:
+    #             color = CELL_BACKGROUND_SELECTED
+    #         else:
+    #             color = val * CELL_BACKGROUND_HIGHLIGHT + (1 - val) * CELL_BACKGROUND_DEFAULT
+    #
+    #         rect_x = anchor[0] - 2
+    #         rect_y = current_y - 2
+    #         rect_width = PREDICATE_PROBS_COL_WIDTH - 12
+    #
+    #         pygame.draw.rect(self.window, color, [rect_x, rect_y, rect_width, rect_height])
+    #
+    #         for line_num, line in enumerate(lines):
+    #             text_surface = self.font.render(line, True, "white", None)
+    #             text_rect = text_surface.get_rect()
+    #
+    #             line_x = anchor[0] + 10
+    #             line_y = current_y + line_num * line_height
+    #
+    #             self.window.blit(text_surface, (line_x, line_y))
+    #
+    #         current_y += rect_height + 5
+

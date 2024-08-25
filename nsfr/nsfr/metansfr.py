@@ -147,10 +147,10 @@ class MetaNSFReasoner(nn.Module):
         leaves = proof.find_leaf_values(self.atoms[target_index].terms[1].value)
         updated_leaves = []
         for atoms, old_value in leaves:
-            new_value = valuation[:, get_index_for_tree(atoms, self.atoms)].item()
+            new_value = np.round( valuation[:, get_index_for_tree(atoms, self.atoms)].item(),2)
             updated_leaves.append((atoms, new_value))
         new_tree = proof.reconstruct_proof(updated_leaves)
         gotten_atom = copy.deepcopy(self.atoms[target_index])
         gotten_atom.terms[1].value = MetaConst(new_tree, dtype=DataType('proof'))
         # print(str(gotten_atom) + ' + ' + str(valuation[:, target_index].item()))
-        return value
+        return value, gotten_atom
