@@ -47,7 +47,7 @@ def get_meta_nsfr_model(env_name: str, rules: str, device: str,clause_weight:dic
     current_directory = os.getcwd()
     long_text_list = [str(meta_atom) for meta_atom in meta_atoms]
     long_text = "\n".join(long_text_list)
-    file_name = "meta_atom_output.txt"
+    file_name = f"meta_atom_output_{env_name}.txt"
     file_path = os.path.join(current_directory, file_name)
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(long_text)

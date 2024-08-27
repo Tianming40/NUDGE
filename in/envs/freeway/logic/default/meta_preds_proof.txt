@@ -1,0 +1,3 @@
+solve*:2:atoms,proof
+solve:2:atom,proof
+clause:2:atom,atoms
