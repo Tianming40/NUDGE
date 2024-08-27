@@ -29,6 +29,10 @@ class DataUtils(object):
         with open(lark_path, encoding="utf-8") as grammar:
             self.lp_metaRule = Lark(grammar.read(), start="metarule")
 
+    p_ = Predicate('.', 1, [DataType('spec')])
+    false = Atom(p_, [Const('__F__', dtype=DataType('spec'))])
+    true = Atom(p_, [Const('__T__', dtype=DataType('spec'))])
+
     def load_clauses(self, path, lang):
         """Read lines and parse to Atom objects.
         """
@@ -155,13 +159,22 @@ class DataUtils(object):
                     clause_ = subs_list(clause, theta)
                     body = clause_.body
                     theta_list = self.generate_subs(lang,body)
-                    for the in theta_list:
-                        _clause_ = subs_list(clause_, the)
+                    if len(theta_list) > 0:
+                        for the in theta_list:
+                            _clause_ = subs_list(clause_, the)
+                            clause_pred = lang.get_meta_pred_by_name('clause')
+                            head_cons = MetaConst(_clause_.head, dtype=DataType('atom'))
+                            body_cons = MetaConst(_clause_.body, dtype=DataType('atoms'))
+                            meta_clause = MetaAtom(clause_pred, [head_cons, body_cons])
+                            meta_bk_clause_true.append(meta_clause)
+                    else:
                         clause_pred = lang.get_meta_pred_by_name('clause')
-                        head_cons = MetaConst(_clause_.head, dtype=DataType('atom'))
-                        body_cons = MetaConst(_clause_.body, dtype=DataType('atoms'))
+                        head_cons = MetaConst(clause_.head, dtype=DataType('atom'))
+                        body_cons = MetaConst([self.true], dtype=DataType('atoms'))
                         meta_clause = MetaAtom(clause_pred, [head_cons, body_cons])
                         meta_bk_clause_true.append(meta_clause)
+
+
 
         return meta_bk_clause_true
 
@@ -240,6 +253,7 @@ class DataUtils(object):
     def load_meta_atoms(self, path, lang):
         # TODO adjust
         metaatoms = []
+        solve_pred = lang.get_meta_pred_by_name('solve*')
         if os.path.isfile(path):
             with open(path) as f:
                 for line in f:
@@ -249,10 +263,16 @@ class DataUtils(object):
                         line = line[:-1]
                     tree = self.lp_atom.parse(line)
                     atom = ExpTree(lang).transform(tree)
-                    solve_pred=lang.get_meta_pred_by_name('solve*')
+
                     metaconst = MetaConst([atom],dtype=DataType('atoms'))
                     metasolve = MetaAtom(solve_pred, [metaconst, MetaConst(proof(atoms=metaconst, tree = 1),dtype=DataType('proof'))])
                     metaatoms.append(metasolve)
+        true_const = MetaConst([self.true], dtype=DataType('atoms'))
+        false_const = MetaConst([self.false], dtype=DataType('atoms'))
+
+        meta_true = MetaAtom(solve_pred, [true_const, MetaConst(proof(atoms=true_const, tree = 1),dtype=DataType('proof'))])
+        meta_false = MetaAtom(solve_pred, [false_const, MetaConst(proof(atoms=false_const, tree = 0),dtype=DataType('proof'))])
+        metaatoms+=[meta_true,meta_false]
         return metaatoms
 
     def load_interpreter(self,path,lang):

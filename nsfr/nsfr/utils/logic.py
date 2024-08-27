@@ -192,7 +192,7 @@ def get_metalang(lark_path, lang_base_path, dataset, exhaustion = False, filter=
 
 
 def get_value(atom,bk):
-    if atom in bk:
+    if atom in bk or atom == true:
         prob = 1
     elif type(atom.pred) == NeuralPredicate:
         prob = 0
@@ -253,7 +253,7 @@ def get_patterns(clauses):
 
 
 
-def generate_metaconsts(atoms, head, lang,patterns):
+def generate_metaconsts(atoms, head, lang, patterns):
     # FIxme modify
     metaconsts = []
     head_atoms = []
@@ -274,11 +274,13 @@ def generate_metaconsts(atoms, head, lang,patterns):
         theta_list = generate_subs(lang, pattern)
         for the in theta_list:
             body_cons = [subs_list(bi, the) for bi in pattern]
-
             body_consts = MetaConst(body_cons, dtype=DataType('atoms'))
             metaconsts.append(body_consts)
 
     metaconsts += head_atoms
+    metaconsts.append(MetaConst([true], dtype=DataType('atoms')))
+    metaconsts.append(MetaConst([false], dtype=DataType('atoms')))
+
     return metaconsts
 
 
@@ -418,7 +420,7 @@ def get_proof_for_single_Atom(atom,bk,metalang):
     for bkatom in bk:
         if bkatom.pred.name == 'solve*':
             bk_without_meta.append(bkatom.terms[0].value[0])
-    bk_without_meta.append(true)
+    bk_without_meta.remove(false)
     bk_atom_has_body = get_bk_clauses_group(bk)
 
 
