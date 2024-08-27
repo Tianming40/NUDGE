@@ -1,7 +1,10 @@
-from .logic import Clause, Atom, FuncTerm, Const, Var,MetaVar, Term, MetaConst,MetaAtom,MetaRule
+from .logic import Clause, Atom, FuncTerm, Const, Var,MetaVar, Term, MetaConst,MetaAtom,MetaRule , Predicate
 from .language import DataType
 
 
+p_ = Predicate('.', 1, [DataType('spec')])
+false = Atom(p_, [Const('__F__', dtype=DataType('spec'))])
+true = Atom(p_, [Const('__T__', dtype=DataType('spec'))])
 def subs(exp, target_var, const):
     """
     Substitute var = const
@@ -276,8 +279,12 @@ def meta_clause_unify(clause,meta_clause):
 
     if clause.head.pred != meta_clause.terms[0].value.pred:
         return False
+    if len(clause.body) ==0 and len(meta_clause.terms[1].value)==1 and meta_clause.terms[1].value[0]==true:
+        return True
+
     if len(clause.body) != len(meta_clause.terms[1].value):
         return False
+
     for i in range(len(meta_clause.terms[1].value)):
         if clause.body[i].pred != meta_clause.terms[1].value[i].pred:
             return False

@@ -127,7 +127,7 @@ def get_index_by_predname_meta(pred_str, metaatoms):
 def get_index_for_tree(atoms,metaatoms):
     # atoms is MetaConst
     for i, metaatom in enumerate(metaatoms):
-        if metaatom.pred.name == 'solve*' and metaatom.terms[0].value[0].pred.name == atoms.value[0].pred.name:
+        if metaatom.pred.name == 'solve*' and len(metaatom.terms[0].value) == 1 and metaatom.terms[0].value[0].pred.name == atoms.value[0].pred.name:
             return i
     assert 1, str(atoms) + ' not found.'
 

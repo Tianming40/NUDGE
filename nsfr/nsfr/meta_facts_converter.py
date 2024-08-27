@@ -69,8 +69,9 @@ class MetaFactsConverter(nn.Module):
             # TODO modify here atom is metaatom
             if meta_atom.pred.name == 'solve*' and type(meta_atom.terms[0].value) == list:
                 if len(meta_atom.terms[0].value) == 1 and type(meta_atom.terms[0].value[0].pred) == NeuralPredicate:
-                    # TODO vm must be modified
-                    V[:, i] = self.vm(Z, meta_atom.terms[0].value[0])
+                    if all(not isinstance(const.dtype, list) for const in meta_atom.terms[0].value[0].terms):
+                        # TODO vm must be modified
+                        V[:, i] = self.vm(Z, meta_atom.terms[0].value[0])
                     # print(V[:, i])
                 if meta_atom in B:
                 # V[:, i] += 1.0
@@ -79,10 +80,13 @@ class MetaFactsConverter(nn.Module):
                 for clause, weight in self.clause_weight.items():
                     if meta_clause_unify(clause, meta_atom):
                         V[:, i] += torch.full((batch_size,), weight).to(torch.float32).to(self.device)
-        # metasolveture = MetaAtom(self.lang.get_meta_pred_by_name('solve'), [MetaConst([true], dtype='atoms')])
-        # index = G.index(metasolveture)
+        metasolveture = MetaAtom(self.lang.get_meta_pred_by_name('solve*'), [MetaConst([true], dtype=DataType('atoms')), MetaConst(value=proof(
+                                                                       atoms=MetaConst([true], dtype=DataType('atoms')), tree=1),
+                                                                       dtype=DataType('proof'))])
+        index = G.index(metasolveture)
         # # print('ppppppppppp',index)
         # # print('ssssssssssss',G[index])
+        V[:,index] = torch.ones((batch_size, )).to(torch.float32).to(self.device)
         V[:, 1] = torch.ones((batch_size, )).to(torch.float32).to(self.device)
         return V
 
