@@ -125,6 +125,7 @@ def get_index_by_predname_meta(pred_str, metaatoms):
 
 
 def get_index_for_tree(atoms,metaatoms):
+
     # atoms is MetaConst
     for i, metaatom in enumerate(metaatoms):
         if metaatom.pred.name == 'solve*' and len(metaatom.terms[0].value) == 1 and metaatom.terms[0].value[0].pred.name == atoms.value[0].pred.name:
@@ -272,6 +273,14 @@ def generate_metaconsts(atoms, head, lang, patterns):
     #                 metaconsts.append(metaconst_atoms)
     for pattern in patterns:
         theta_list = generate_subs(lang, pattern)
+        # if len(theta_list) > 0:
+        #     for the in theta_list:
+        #         body_cons = [subs_list(bi, the) for bi in pattern]
+        #         body_consts = MetaConst(body_cons, dtype=DataType('atoms'))
+        #         metaconsts.append(body_consts)
+        # else:
+        #     body_consts = MetaConst(pattern, dtype=DataType('atoms'))
+        #     metaconsts.append(body_consts)
         for the in theta_list:
             body_cons = [subs_list(bi, the) for bi in pattern]
             body_consts = MetaConst(body_cons, dtype=DataType('atoms'))

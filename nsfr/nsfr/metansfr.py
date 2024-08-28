@@ -144,6 +144,7 @@ class MetaNSFReasoner(nn.Module):
                 target_index = index
         value = valuation[:, target_index].item()
 
+        gotten_atom = self.atoms[target_index]
         leaves = proof.find_leaf_values(self.atoms[target_index].terms[1].value)
         updated_leaves = []
         for atoms, old_value in leaves:
