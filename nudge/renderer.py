@@ -39,7 +39,7 @@ class Renderer:
 
         # Load model and environment
         self.meta = meta
-        self.model = load_model(agent_path, env_kwargs_override=env_kwargs, device=device, meta=self.meta)
+        self.model, self.meta_model = load_model(agent_path, env_kwargs_override=env_kwargs, device=device, meta=self.meta)
         self.env = self.model.env
         self.env.reset()
 
@@ -62,8 +62,10 @@ class Renderer:
         self.current_keys_down = set()
 
         self.nsfr_reasoner = self.model.actor
+        self.meta_reasoner = self.meta_model.actor
         # self.nsfr_reasoner.print_program()
         print_program(self.model)
+        print_program(self.meta_model)
         self.predicates = self.nsfr_reasoner.prednames
 
         self._init_pygame()
@@ -105,6 +107,9 @@ class Renderer:
             else:  # AI plays the game
                 action, _ = self.model.act(th.unsqueeze(th.tensor(obs), 0))
                 action = self.predicates[action.item()]
+                # for proof tree
+                meta_action, _ = self.meta_model.act(th.unsqueeze(th.tensor(obs), 0))
+                meta_action = self.predicates[meta_action.item()]
 
             if not self.paused:
                 (new_obs, _), reward, done = self.env.step(action, is_mapped=self.takeover)
@@ -200,7 +205,7 @@ class Renderer:
         anchor = (self.env_render_shape[0] + 10, 25)
         max_width = PREDICATE_PROBS_COL_WIDTH - 12
 
-        nsfr = self.nsfr_reasoner
+        nsfr = self.meta_reasoner
         pred_vals = {pred: nsfr.get_predicate_valuation(pred, initial_valuation=False) for pred in nsfr.prednames}
         i_max = np.argmax(list(pred_vals.values()))
         for i, (pred, (val,atom)) in enumerate(pred_vals.items()):

@@ -89,9 +89,9 @@ def load_model(model_dir,
 
     if meta:
         clause_weights = get_weights(model)
-        model = MetaNsfrActorCritic(env, device=device, rules=rules, clause_weights=clause_weights).to(device)
+        meta_model = MetaNsfrActorCritic(env, device=device, rules=rules, clause_weights=clause_weights).to(device)
 
-    return model
+    return model, meta_model
 
 
 def yellow(text):
