@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 parser = ArgumentParser()
-parser.add_argument("-g", "--game", type=str, default="freeway")
+parser.add_argument("-g", "--game", type=str, default="seaquest")
 parser.add_argument("-a", "--agent_path", type=str, default="out/runs/game/logic/")
 parser.add_argument("-np", "--no_predicates", action="store_true")
 
