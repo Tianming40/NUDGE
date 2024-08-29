@@ -90,8 +90,9 @@ def load_model(model_dir,
     if meta:
         clause_weights = get_weights(model)
         meta_model = MetaNsfrActorCritic(env, device=device, rules=rules, clause_weights=clause_weights).to(device)
-
-    return model, meta_model
+        return model, meta_model
+    else:
+        return model, model
 
 
 def yellow(text):
@@ -120,23 +121,22 @@ def get_weights(agent, mode = "softor"):
         nsfr_actor = agent.actor
     except AttributeError:
         nsfr_actor = agent.policy.actor
+    clause_weights = {}
     if mode == "argmax":
         C = nsfr_actor.clauses
         Ws_softmaxed = torch.softmax(nsfr_actor.im.W, 1)
         for i, W_ in enumerate(Ws_softmaxed):
             max_i = np.argmax(W_.detach().cpu().numpy())
-            print('C_' + str(i) + ': ',
-                  C[max_i], 'W_' + str(i) + ':', round(W_[max_i].detach().cpu().item(), 3))
+            clause_weights[C[max_i]] = W_[max_i].detach().cpu().item()
     elif mode == "softor":
         W_softmaxed = torch.softmax(nsfr_actor.im.W, 1)
         w = softor(W_softmaxed, dim=0)
-        clause_weights = {}
 
         for i, c in enumerate(nsfr_actor.clauses):
             weight = w[i].detach().cpu().item()
             clause_weights[c] = weight
 
-        return clause_weights
+    return clause_weights
 
 def print_program(agent, mode="softor"):
     """Print a summary of logic programs using continuous weights."""

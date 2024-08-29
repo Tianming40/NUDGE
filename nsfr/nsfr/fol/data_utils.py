@@ -272,7 +272,7 @@ class DataUtils(object):
 
         meta_true = MetaAtom(solve_pred, [true_const, MetaConst(proof(atoms=true_const, tree = 1),dtype=DataType('proof'))])
         meta_false = MetaAtom(solve_pred, [false_const, MetaConst(proof(atoms=false_const, tree = 0),dtype=DataType('proof'))])
-        metaatoms+=[meta_true,meta_false]
+        metaatoms += [meta_true]
         return metaatoms
 
     def load_interpreter(self,path,lang):

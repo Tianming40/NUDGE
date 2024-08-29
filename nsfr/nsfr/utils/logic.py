@@ -249,8 +249,8 @@ def get_patterns(clauses):
                 all_patterns.append([popped_atom])
             else:
                 popped_atom = bodys.pop(0)
-
-    return all_patterns
+    patterns = [list(pattern) for pattern in set(tuple(pattern) for pattern in all_patterns)]
+    return patterns
 
 
 
@@ -259,10 +259,9 @@ def generate_metaconsts(atoms, head, lang, patterns):
     metaconsts = []
     head_atoms = []
     ite_body_atoms = []
-    for atom in atoms:
-        if atom in head:
-            meta_atom = MetaConst(atom,  dtype=DataType('atom'))
-            head_atoms.append(meta_atom)
+    for atom in head:
+        meta_atom = MetaConst(atom,  dtype=DataType('atom'))
+        head_atoms.append(meta_atom)
 
     # for i in range(1, n+1):
     #     for combo in itertools.product(ite_body_atoms, repeat=i):  # Cartesian Product with len=1
@@ -429,7 +428,6 @@ def get_proof_for_single_Atom(atom,bk,metalang):
     for bkatom in bk:
         if bkatom.pred.name == 'solve*':
             bk_without_meta.append(bkatom.terms[0].value[0])
-    bk_without_meta.remove(false)
     bk_atom_has_body = get_bk_clauses_group(bk)
 
 
