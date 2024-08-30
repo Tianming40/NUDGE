@@ -5,6 +5,7 @@ from .fol.logic import *
 from .fol.language import DataType
 from nsfr.utils.logic import get_index_by_predname_meta,get_index_for_tree
 import copy
+from nsfr.utils.torch import softor, weight_sum
 import torch.nn.functional as F
 
 
@@ -97,19 +98,24 @@ class MetaNSFReasoner(nn.Module):
         """
         # v: batch * |atoms|
         target_indices = []
+        B = v.size(0)  # 获取批量大小
+        results = []
         for predname in prednames:
             target_index_lst = get_index_by_predname_meta(
                 pred_str=predname, metaatoms=self.atoms)
-            max_sum = float('-inf')
-            target_index = target_index_lst[0]
-            for index in target_index_lst:
-                current_sum = v[:, index]
-                if current_sum > max_sum:
-                    max_sum = current_sum
-                    target_index = index
-            target_indices.append(target_index)
-        prob = torch.cat([v[:, i].unsqueeze(-1)
-                         for i in target_indices], dim=1)
+            values_to_or = [v[:, index] for index in target_index_lst]
+            soft_or_result = softor(values_to_or, dim=0, gamma=0.01)
+            results.append(soft_or_result.unsqueeze(-1))
+
+        prob = torch.cat(results, dim=1)
+
+        N = len(prednames)
+        assert prob.size(0) == B and prob.size(1) == N, 'Invalid shape in the prediction.'
+        return prob
+
+
+
+
         B = v.size(0)
         N = len(prednames)
         assert prob.size(0) == B and prob.size(
