@@ -14,7 +14,7 @@ from hackatari.core import HackAtari
 
 
 SCREENSHOTS_BASE_PATH = "out/screenshots/"
-PREDICATE_PROBS_COL_WIDTH = 300
+PREDICATE_PROBS_COL_WIDTH = 1000
 CELL_BACKGROUND_DEFAULT = np.array([40, 40, 40])
 CELL_BACKGROUND_HIGHLIGHT = np.array([40, 150, 255])
 CELL_BACKGROUND_SELECTED = np.array([80, 80, 80])
@@ -86,7 +86,7 @@ class Renderer:
             window_shape[0] += PREDICATE_PROBS_COL_WIDTH
         self.window = pygame.display.set_mode(window_shape, pygame.SCALED)
         self.clock = pygame.time.Clock()
-        self.font = pygame.font.SysFont('Calibri', 24)
+        self.font = pygame.font.SysFont('Calibri', 14)
 
     def run(self):
         length = 0
@@ -203,28 +203,48 @@ class Renderer:
 
     def _render_predicate_probs(self):
         anchor = (self.env_render_shape[0] + 10, 25)
+        anchor_x = self.env_render_shape[0] + 10
+        anchor_y = 25
         max_width = PREDICATE_PROBS_COL_WIDTH - 12
+        line_height = 20
+        line_spacing = 4
         if self.meta:
             nsfr = self.meta_reasoner
             pred_vals = {pred: nsfr.get_predicate_valuation(pred, initial_valuation=False) for pred in nsfr.prednames}
-            i_max = np.argmax(list(pred_vals.values()))
+            scores = [value[0] for value in pred_vals.values()]
+            i_max = np.argmax(scores)
             for i, (pred, (val,atom)) in enumerate(pred_vals.items()):
+
+                full_text = str(f"{100*val:.2f} - {atom}")
+                wrapped_text_lines = self.wrap_text(self.font, full_text, max_width)
+                num_lines = len(wrapped_text_lines)
+                cell_height = num_lines * (line_height + line_spacing)
+
                 # Render cell background
                 if i == i_max:
                     color = CELL_BACKGROUND_SELECTED
                 else:
                     color = val * CELL_BACKGROUND_HIGHLIGHT + (1 - val) * CELL_BACKGROUND_DEFAULT
                 pygame.draw.rect(self.window, color, [
-                    anchor[0] - 2,
-                    anchor[1] - 2 + i * 35,
+                    anchor_x - 2,
+                    anchor_y - 2,
                     max_width,
-                    28
+                    cell_height
                 ])
 
-                text = self.font.render(str(f"{100*val:.2f} - {atom}"), True, "white", None)
-                text_rect = text.get_rect()
-                text_rect.topleft = (self.env_render_shape[0] + 10, 25 + i * 35)
-                self.window.blit(text, text_rect)
+                # text = self.font.render(str(f"{100*val:.2f} - {atom}"), True, "white", None)
+                # text_rect = text.get_rect()
+                # text_rect.topleft = (self.env_render_shape[0] + 10, 25 + i * 35)
+                # self.window.blit(text, text_rect)
+
+
+                # Render each line of text
+                for line_idx, line in enumerate(wrapped_text_lines):
+                    text = self.font.render(line, True, "white", None)
+                    text_rect = text.get_rect()
+                    text_rect.topleft = (anchor_x, anchor_y + line_idx * (line_height + line_spacing))
+                    self.window.blit(text, text_rect)
+                anchor_y += cell_height + line_spacing
         else:
             nsfr = self.nsfr_reasoner
             pred_vals = {pred: nsfr.get_predicate_valuation(pred, initial_valuation=False) for pred in nsfr.prednames}
@@ -247,6 +267,22 @@ class Renderer:
                 text_rect.topleft = (self.env_render_shape[0] + 10, 25 + i * 35)
                 self.window.blit(text, text_rect)
 
+    def wrap_text(self, font, text, max_width):
+        """Wrap text based on the max width using pygame."""
+        words = text.split(' ')
+        lines = []
+        current_line = []
 
+        for word in words:
+            test_line = ' '.join(current_line + [word])
+            width, _ = font.size(test_line)
+            if width <= max_width:
+                current_line.append(word)
+            else:
+                lines.append(' '.join(current_line))
+                current_line = [word]
+
+        lines.append(' '.join(current_line))  # Append the last line
+        return lines
 
 
