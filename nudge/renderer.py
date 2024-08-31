@@ -232,12 +232,6 @@ class Renderer:
                     cell_height
                 ])
 
-                # text = self.font.render(str(f"{100*val:.2f} - {atom}"), True, "white", None)
-                # text_rect = text.get_rect()
-                # text_rect.topleft = (self.env_render_shape[0] + 10, 25 + i * 35)
-                # self.window.blit(text, text_rect)
-
-
                 # Render each line of text
                 for line_idx, line in enumerate(wrapped_text_lines):
                     text = self.font.render(line, True, "white", None)
