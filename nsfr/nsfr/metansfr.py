@@ -98,7 +98,7 @@ class MetaNSFReasoner(nn.Module):
         """
         # v: batch * |atoms|
         target_indices = []
-        B = v.size(0)  # 获取批量大小
+        B = v.size(0)
         results = []
         for predname in prednames:
             target_index_lst = get_index_by_predname_meta(
