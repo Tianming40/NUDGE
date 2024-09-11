@@ -114,7 +114,7 @@ class Renderer:
             if not self.paused:
                 (new_obs, _), reward, done = self.env.step(action, is_mapped=self.takeover)
 
-                self._render()
+                self._render(action)
                 ret += reward
 
                 if self.takeover and float(reward) != 0:
@@ -123,7 +123,7 @@ class Renderer:
                 if self.reset:
                     done = True
                     new_obs, _ = self.env.reset()
-                    self._render()
+                    self._render(action)
 
                 obs = new_obs
                 length += 1
@@ -184,11 +184,11 @@ class Renderer:
                 # elif event.key == pygame.K_f:  # 'F': fast forward
                 #     self.fast_forward = False
 
-    def _render(self):
+    def _render(self, action):
         self.window.fill((20, 20, 20))  # clear the entire window
         self._render_env()
         if self.render_predicate_probs:
-            self._render_predicate_probs()
+            self._render_predicate_probs(action)
 
         pygame.display.flip()
         pygame.event.pump()
@@ -201,7 +201,7 @@ class Renderer:
         pygame.pixelcopy.array_to_surface(frame_surface, frame)
         self.window.blit(frame_surface, (0, 0))
 
-    def _render_predicate_probs(self):
+    def _render_predicate_probs(self, action):
         anchor = (self.env_render_shape[0] + 10, 25)
         anchor_x = self.env_render_shape[0] + 10
         anchor_y = 25
@@ -211,19 +211,26 @@ class Renderer:
         if self.meta:
             nsfr = self.meta_reasoner
             pred_vals = {pred: nsfr.get_predicate_valuation(pred, initial_valuation=False) for pred in nsfr.prednames}
-            scores = [value[0] for value in pred_vals.values()]
-            i_max = np.argmax(scores)
+            # scores = [value[0] for value in pred_vals.values()]
+            # i_max = np.argmax(scores)
+            i_action = None
+            for i, (pred, (val, atom)) in enumerate(pred_vals.items()):
+                if pred == action:
+                    i_action = i
+                    break
             for i, (pred, (val,atom)) in enumerate(pred_vals.items()):
-
-                full_text = str(f"{100*val:.2f} - {atom}")
-                wrapped_text_lines = self.wrap_text(self.font, full_text, max_width)
-                num_lines = len(wrapped_text_lines)
-                cell_height = num_lines * (line_height + line_spacing)
-
                 # Render cell background
-                if i == i_max:
+                if i == i_action:
+                    full_text = str(f"{100 * val:.2f} - {atom}")
+                    wrapped_text_lines = self.wrap_text(self.font, full_text, max_width)
+                    num_lines = len(wrapped_text_lines)
+                    cell_height = num_lines * (line_height + line_spacing)
                     color = CELL_BACKGROUND_SELECTED
                 else:
+                    full_text = str(f"solve({atom.terms[0]})")
+                    wrapped_text_lines = self.wrap_text(self.font, full_text, max_width)
+                    num_lines = len(wrapped_text_lines)
+                    cell_height = num_lines * (line_height + line_spacing)
                     color = val * CELL_BACKGROUND_HIGHLIGHT + (1 - val) * CELL_BACKGROUND_DEFAULT
                 pygame.draw.rect(self.window, color, [
                     anchor_x - 2,
