@@ -213,25 +213,22 @@ class Renderer:
             pred_vals = {pred: nsfr.get_predicate_valuation(pred, initial_valuation=False) for pred in nsfr.prednames}
             # scores = [value[0] for value in pred_vals.values()]
             # i_max = np.argmax(scores)
-            i_action = None
-            for i, (pred, (val, atom)) in enumerate(pred_vals.items()):
-                if pred == action:
-                    i_action = i
-                    break
-            for i, (pred, (val,atom)) in enumerate(pred_vals.items()):
-                # Render cell background
-                if i == i_action:
-                    full_text = str(f"{100 * val:.2f} - {atom}")
+            obj_nsfr = self.nsfr_reasoner
+            obj_pred_vals = {pred: obj_nsfr.get_predicate_valuation(pred, initial_valuation=False) for pred in nsfr.prednames}
+            i_max = np.argmax(list(obj_pred_vals.values()))
+            for (i, (pred, (val, atom))), (obj_pred, obj_val) in zip(enumerate(pred_vals.items()),obj_pred_vals.items()):     # Render cell background
+                if i == i_max:
+                    full_text = str(f"{100 * obj_val:.2f} - {atom}")
                     wrapped_text_lines = self.wrap_text(self.font, full_text, max_width)
                     num_lines = len(wrapped_text_lines)
                     cell_height = num_lines * (line_height + line_spacing)
                     color = CELL_BACKGROUND_SELECTED
                 else:
-                    full_text = str(f"solve({atom.terms[0]})")
+                    full_text = str(f"{100 * obj_val:.2f} - solve({atom.terms[0]})")
                     wrapped_text_lines = self.wrap_text(self.font, full_text, max_width)
                     num_lines = len(wrapped_text_lines)
                     cell_height = num_lines * (line_height + line_spacing)
-                    color = val * CELL_BACKGROUND_HIGHLIGHT + (1 - val) * CELL_BACKGROUND_DEFAULT
+                    color = obj_val * CELL_BACKGROUND_HIGHLIGHT + (1 - obj_val) * CELL_BACKGROUND_DEFAULT
                 pygame.draw.rect(self.window, color, [
                     anchor_x - 2,
                     anchor_y - 2,
