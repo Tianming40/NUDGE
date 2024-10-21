@@ -7,6 +7,7 @@ parser = ArgumentParser()
 parser.add_argument("-g", "--game", type=str, default="seaquest")
 parser.add_argument("-a", "--agent_path", type=str, default="out/runs/game/logic/")
 parser.add_argument("-np", "--no_predicates", action="store_true")
+parser.add_argument("-m", "--meta", type=str, default="True", help="Set meta logic (True or False)")
 
 def find_latest_trained_checkpoint(agent_path):
     agent_path = Path(agent_path)
@@ -27,10 +28,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
     agent_path = args.agent_path.replace("game", args.game)
     trained_checkpoint = find_latest_trained_checkpoint(agent_path)
+    if args.meta.lower() == "true":
+        meta_value = True
+    elif args.meta.lower() == "false":
+        meta_value = False
     renderer = Renderer(agent_path=trained_checkpoint,
                         fps=100,
                         deterministic=False,
                         env_kwargs=dict(render_oc_overlay=True),
-                        render_predicate_probs=not (args.no_predicates), meta=True)
+                        render_predicate_probs=not (args.no_predicates), meta=meta_value)
 
     renderer.run()

@@ -93,3 +93,76 @@ python3 beam_search.py -m threefish -r threefishm_root -t 3 -n 8
 * **--n**:  The size of the beam.
 * **--scoring**: To score the searched rules, a dataset of states information is required.
 * **-d**: The name of dataset to be used for scoring.
+
+## How to use Meta-Logic to get Proof Tree
+
+After obtaining the pre-trained model, it will be stored in the following path:
+`out/runs/game/logic/`
+
+You can run the `play_gui.py` with different logic settings using the following commands.
+### Setting the Game
+
+You can specify the game using the `-g` parameter. For example:
+
+```bash
+python play_gui.py -g <game_name>
+```
+### Using Meta Logic
+
+To use Meta Logic, run the following command:
+
+```bash
+python play_gui.py -m True
+```
+### Using Only NSFR
+If you want to use only NSFR (Non-Standard First-Order Reasoning), run the following command:
+```bash
+python play_gui.py -m False
+```
+
+### Saving Generated Meta Atoms and Code Modification
+
+All generated `meta_atom` outputs will be saved in a `.txt` file in the following path:
+`\explainableNUDGE\meta_atom_output_{env_name}.txt`
+
+Where `{env_name}` refers to the name of the environment (e.g., `seaquest`, etc.).
+
+For example, for the `seaquest` environment, the file path would be:
+`\explainableNUDGE\meta_atom_output_seaquest.txt`
+
+This file will store all `meta_atom` data generated during logic reasoning for the specific environment.
+
+## Step 2: Modify `common.py` for Output Handling
+
+In order to ensure that the generated `meta_atom` is saved as a text file, you should modify the code at line 50 in:
+`\explainableNUDGE\nsfr\nsfr\common.py`
+
+## Configuring the Meta Interpreter
+
+To configure the meta interpreter, follow these steps:
+
+### Step 1: Set Up Meta Predicates and Interpreter
+
+Save the configured meta predicates and interpreter as text files in the corresponding game environment's `default` folder. For example, in the case of the `seaquest` game, save the following files:
+
+- `meta_preds_proof.txt`
+- `proof_tree_interpreter.txt`
+
+The files should be placed in the following path: `\in\envs\seaquest\logic\default`
+
+Make sure the file names and locations match the required structure for the game environment.
+
+### Step 2: Adjust Code in `data_utils.py` and `logic.py`
+
+You need to make adjustments to the following lines in the codebase to integrate the meta interpreter properly:
+
+1. **File**: `\explainableNUDGE\nsfr\nsfr\fol\data_utils.py`
+   - **Line**: 312
+   - Make the necessary changes to ensure that the meta predicates and interpreter are correctly loaded and utilized within the game environment.
+
+2. **File**: `\explainableNUDGE\nsfr\nsfr\utils\logic.py`
+   - **Line**: 178
+   - Modify this line to align with the meta interpreter settings and ensure that the logic processing handles the meta logic correctly.
+
+These changes will allow the meta interpreter to function within the `seaquest` (or any other specified game) environment.
+

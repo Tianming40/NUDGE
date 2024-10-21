@@ -19,3 +19,7 @@ If this repository helps your work, please consider to cite the following paper:
   year      = {2021},
 }
 ```
+# Writing the Meta Logic Interpreter
+
+To write the meta logic interpreter, you need to follow a structured approach involving the adjustment of the meta logic language and modifying the Lark grammar to support the necessary logical constructs. 
+
